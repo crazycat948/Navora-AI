@@ -1,9 +1,20 @@
+from typing import Optional
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 from database import SessionLocal, test_connection
+from ai_service import test_openai_connection, generate_itinerary_json, replace_itinerary_item_json
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class TripCreate(BaseModel):
@@ -19,6 +30,15 @@ class TripCreate(BaseModel):
     need_flight: bool
 
 
+class ItineraryItemUpdate(BaseModel):
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    name: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    locked: Optional[bool] = None
+
+
 @app.get("/")
 def root():
     return {"message": "AI Travel Planner Backend is running"}
@@ -28,6 +48,12 @@ def root():
 def db_test():
     result = test_connection()
     return {"database": "connected", "test_result": result}
+
+
+@app.get("/openai-test")
+def openai_test():
+    result = test_openai_connection()
+    return {"message": result}
 
 
 @app.post("/api/trips/create")
@@ -82,4 +108,435 @@ def create_trip(trip: TripCreate):
     return {
         "message": "Trip created successfully",
         "trip_id": trip_id
+    }
+
+
+@app.post("/api/trips/{trip_id}/generate-itinerary")
+def generate_itinerary(trip_id: int):
+    db = SessionLocal()
+
+    # 1. Create Day 1
+    day_query = text("""
+        INSERT INTO itinerary_days (trip_id, date, day_number, theme, notes)
+        VALUES (:trip_id, '2026-06-01', 1, 'Arrival and City Highlights', 'Mock itinerary for testing')
+        RETURNING id;
+    """)
+
+    day_result = db.execute(day_query, {"trip_id": trip_id})
+    day_id = day_result.fetchone()[0]
+
+    # 2. Mock itinerary items
+    items = [
+        {
+            "item_type": "attraction",
+            "start_time": "09:00",
+            "end_time": "11:00",
+            "name": "Griffith Observatory",
+            "address": "2800 E Observatory Rd, Los Angeles, CA",
+            "notes": "Great city view and photo spot.",
+            "source_agent": "Attraction Agent",
+            "source_api": "Mock Data",
+            "order_index": 1
+        },
+        {
+            "item_type": "restaurant",
+            "start_time": "12:00",
+            "end_time": "13:00",
+            "name": "In-N-Out Burger",
+            "address": "7009 Sunset Blvd, Los Angeles, CA",
+            "notes": "Casual lunch option.",
+            "source_agent": "Food Agent",
+            "source_api": "Mock Data",
+            "order_index": 2
+        },
+        {
+            "item_type": "attraction",
+            "start_time": "14:00",
+            "end_time": "16:00",
+            "name": "Hollywood Walk of Fame",
+            "address": "Hollywood Blvd, Los Angeles, CA",
+            "notes": "Classic LA landmark.",
+            "source_agent": "Attraction Agent",
+            "source_api": "Mock Data",
+            "order_index": 3
+        }
+    ]
+
+    # 3. Insert itinerary items
+    for item in items:
+        item_query = text("""
+            INSERT INTO itinerary_items (
+                trip_id,
+                day_id,
+                item_type,
+                start_time,
+                end_time,
+                name,
+                address,
+                notes,
+                source_agent,
+                source_api,
+                order_index
+            )
+            VALUES (
+                :trip_id,
+                :day_id,
+                :item_type,
+                :start_time,
+                :end_time,
+                :name,
+                :address,
+                :notes,
+                :source_agent,
+                :source_api,
+                :order_index
+            );
+        """)
+
+        db.execute(item_query, {
+            "trip_id": trip_id,
+            "day_id": day_id,
+            **item
+        })
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Mock itinerary generated successfully",
+        "trip_id": trip_id,
+        "day_id": day_id,
+        "items_created": len(items)
+    }
+
+@app.get("/api/trips/{trip_id}")
+def get_trip_detail(trip_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    if not trip:
+        db.close()
+        return {"error": "Trip not found"}
+
+    days = db.execute(text("""
+        SELECT *
+        FROM itinerary_days
+        WHERE trip_id = :trip_id
+        ORDER BY day_number;
+    """), {"trip_id": trip_id}).mappings().fetchall()
+
+    result_days = []
+
+    for day in days:
+        items = db.execute(text("""
+            SELECT *
+            FROM itinerary_items
+            WHERE day_id = :day_id
+            ORDER BY order_index;
+        """), {"day_id": day["id"]}).mappings().fetchall()
+
+        result_days.append({
+            "id": day["id"],
+            "date": str(day["date"]),
+            "day_number": day["day_number"],
+            "theme": day["theme"],
+            "notes": day["notes"],
+            "items": [dict(item) for item in items]
+        })
+
+    db.close()
+
+    return {
+        "trip": dict(trip),
+        "days": result_days
+    }
+
+@app.get("/api/trips")
+def get_trip_history():
+    db = SessionLocal()
+
+    trips = db.execute(text("""
+        SELECT *
+        FROM trips
+        ORDER BY created_at DESC;
+    """)).mappings().fetchall()
+
+    db.close()
+
+    return {
+        "trips": [dict(trip) for trip in trips]
+    }
+
+@app.get("/api/trips/{trip_id}/ai-preview")
+def ai_preview(trip_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    db.close()
+
+    if not trip:
+        return {"error": "Trip not found"}
+
+    itinerary_json = generate_itinerary_json(dict(trip))
+
+    return itinerary_json
+
+@app.post("/api/trips/{trip_id}/generate-ai-itinerary")
+def generate_ai_itinerary(trip_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    if not trip:
+        db.close()
+        return {"error": "Trip not found"}
+
+    db.execute(text("""
+        DELETE FROM itinerary_items
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id})
+
+    db.execute(text("""
+        DELETE FROM itinerary_days
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id})
+
+    itinerary_json = generate_itinerary_json(dict(trip))
+
+    days_created = 0
+    items_created = 0
+
+    for day in itinerary_json["days"]:
+        day_result = db.execute(text("""
+            INSERT INTO itinerary_days (trip_id, date, day_number, theme, notes)
+            VALUES (:trip_id, :date, :day_number, :theme, :notes)
+            RETURNING id;
+        """), {
+            "trip_id": trip_id,
+            "date": day["date"],
+            "day_number": day["day_number"],
+            "theme": day["theme"],
+            "notes": day["notes"]
+        })
+
+        day_id = day_result.fetchone()[0]
+        days_created += 1
+
+        for index, item in enumerate(day["items"], start=1):
+            db.execute(text("""
+                INSERT INTO itinerary_items (
+                    trip_id,
+                    day_id,
+                    item_type,
+                    start_time,
+                    end_time,
+                    name,
+                    address,
+                    notes,
+                    source_agent,
+                    source_api,
+                    order_index
+                )
+                VALUES (
+                    :trip_id,
+                    :day_id,
+                    :item_type,
+                    :start_time,
+                    :end_time,
+                    :name,
+                    :address,
+                    :notes,
+                    :source_agent,
+                    :source_api,
+                    :order_index
+                );
+            """), {
+                "trip_id": trip_id,
+                "day_id": day_id,
+                "item_type": item["item_type"],
+                "start_time": item["start_time"],
+                "end_time": item["end_time"],
+                "name": item["name"],
+                "address": item["address"],
+                "notes": item["notes"],
+                "source_agent": item["source_agent"],
+                "source_api": item["source_api"],
+                "order_index": index
+            })
+
+            items_created += 1
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "AI itinerary generated and saved successfully",
+        "trip_id": trip_id,
+        "days_created": days_created,
+        "items_created": items_created
+    }
+
+
+@app.patch("/api/itinerary-items/{item_id}")
+def update_itinerary_item(item_id: int, update: ItineraryItemUpdate):
+    db = SessionLocal()
+
+    existing_item = db.execute(text("""
+        SELECT *
+        FROM itinerary_items
+        WHERE id = :item_id;
+    """), {"item_id": item_id}).mappings().fetchone()
+
+    if not existing_item:
+        db.close()
+        return {"error": "Itinerary item not found"}
+
+    update_data = update.model_dump(exclude_unset=True)
+
+    if not update_data:
+        db.close()
+        return {"error": "No fields provided for update"}
+
+    set_clauses = []
+    params = {"item_id": item_id}
+
+    for field, value in update_data.items():
+        set_clauses.append(f"{field} = :{field}")
+        params[field] = value
+
+    set_clauses.append("updated_at = CURRENT_TIMESTAMP")
+
+    query = text(f"""
+        UPDATE itinerary_items
+        SET {", ".join(set_clauses)}
+        WHERE id = :item_id
+        RETURNING *;
+    """)
+
+    updated_item = db.execute(query, params).mappings().fetchone()
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Itinerary item updated successfully",
+        "item": dict(updated_item)
+    }
+
+
+@app.post("/api/itinerary-items/{item_id}/replace")
+def replace_itinerary_item(item_id: int):
+    db = SessionLocal()
+
+    current_item = db.execute(text("""
+        SELECT *
+        FROM itinerary_items
+        WHERE id = :item_id;
+    """), {"item_id": item_id}).mappings().fetchone()
+
+    if not current_item:
+        db.close()
+        return {"error": "Itinerary item not found"}
+
+    if current_item["locked"]:
+        db.close()
+        return {"error": "This item is locked and cannot be replaced"}
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": current_item["trip_id"]}).mappings().fetchone()
+
+    if not trip:
+        db.close()
+        return {"error": "Trip not found"}
+
+    existing_items = db.execute(text("""
+        SELECT name
+        FROM itinerary_items
+        WHERE day_id = :day_id
+          AND id != :item_id;
+    """), {
+        "day_id": current_item["day_id"],
+        "item_id": item_id
+    }).fetchall()
+
+    existing_names = [row[0] for row in existing_items]
+
+    new_item = replace_itinerary_item_json(dict(trip), dict(current_item), existing_names)
+
+    updated_item = db.execute(text("""
+        UPDATE itinerary_items
+        SET
+            item_type = :item_type,
+            start_time = :start_time,
+            end_time = :end_time,
+            name = :name,
+            address = :address,
+            notes = :notes,
+            source_agent = :source_agent,
+            source_api = :source_api,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = :item_id
+        RETURNING *;
+    """), {
+        "item_id": item_id,
+        "item_type": new_item["item_type"],
+        "start_time": new_item["start_time"],
+        "end_time": new_item["end_time"],
+        "name": new_item["name"],
+        "address": new_item["address"],
+        "notes": new_item["notes"],
+        "source_agent": new_item["source_agent"],
+        "source_api": new_item["source_api"]
+    }).mappings().fetchone()
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Itinerary item replaced successfully",
+        "item": dict(updated_item)
+    }
+
+@app.delete("/api/itinerary-items/{item_id}")
+def delete_itinerary_item(item_id: int):
+    db = SessionLocal()
+
+    existing_item = db.execute(text("""
+        SELECT *
+        FROM itinerary_items
+        WHERE id = :item_id;
+    """), {"item_id": item_id}).mappings().fetchone()
+
+    if not existing_item:
+        db.close()
+        return {"error": "Itinerary item not found"}
+
+    db.execute(text("""
+        DELETE FROM itinerary_items
+        WHERE id = :item_id;
+    """), {"item_id": item_id})
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Itinerary item deleted successfully",
+        "deleted_item_id": item_id
     }
