@@ -16,11 +16,11 @@ def test_openai_connection():
     return response.output_text
 
 
-def generate_itinerary_json(trip):
+def generate_itinerary_json(trip, attraction_data=None, food_data=None, weather_data=None):
     prompt = f"""
 You are an AI travel planner.
 
-Generate a structured one-day travel itinerary in JSON format.
+Generate a structured travel itinerary in JSON format.
 
 Trip information:
 - Title: {trip["title"]}
@@ -33,6 +33,40 @@ Trip information:
 - Has Car: {trip["has_car"]}
 - Need Hotel: {trip["need_hotel"]}
 - Need Flight: {trip["need_flight"]}
+
+Attraction Agent recommendations:
+{json.dumps(attraction_data, indent=2) if attraction_data else "None"}
+
+Food Agent recommendations:
+{json.dumps(food_data, indent=2) if food_data else "None"}
+
+Weather Agent recommendations:
+{json.dumps(weather_data, indent=2) if weather_data else "None"}
+
+Important rules:
+- For attraction items, prioritize places from the Attraction Agent recommendations.
+- If using an attraction from the recommendations, keep the exact:
+  - name
+  - address
+  - place_id
+- Do NOT invent fake attraction names.
+- For restaurant items, prioritize restaurants from the Food Agent recommendations.
+- If using a restaurant from the recommendations, keep the exact name, address, and place_id.
+- Do NOT invent fake restaurant names.
+- Use Weather Agent recommendations to decide indoor/outdoor activity timing.
+- On rainy days, prefer indoor attractions and restaurants.
+- On sunny days, outdoor attractions are preferred.
+- Create a realistic schedule with proper travel flow.
+- Include both attractions and restaurants.
+
+STRICT RULES:
+- ONLY use attractions from Attraction Agent recommendations.
+- ONLY use restaurants from Food Agent recommendations.
+- NEVER invent attraction names.
+- NEVER invent restaurant names.
+- Every attraction must include a valid external_place_id.
+- Every restaurant must include a valid external_place_id.
+- Do not repeat the same place more than once in the entire itinerary.
 
 Return ONLY valid JSON with this structure:
 
@@ -52,20 +86,25 @@ Return ONLY valid JSON with this structure:
           "address": "string",
           "notes": "string",
           "source_agent": "Attraction Agent or Food Agent",
-          "source_api": "OpenAI"
+          "source_api": "Google Places + OpenAI or OpenAI",
+          "external_place_id": "string or null"
         }}
       ]
     }}
   ]
 }}
 
-Return ONLY valid JSON. Do NOT include any explanation, text, or markdown.
+Return ONLY valid JSON.
+Do NOT include markdown.
+Do NOT include explanations.
 """
 
     response = client.responses.create(
         model="gpt-4o-mini",
         input=prompt
     )
+
+    print("ITINERARY RAW OUTPUT:", response.output_text)
 
     return json.loads(response.output_text)
 

@@ -5,6 +5,11 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from database import SessionLocal, test_connection
 from ai_service import test_openai_connection, generate_itinerary_json, replace_itinerary_item_json
+from places_service import search_places
+from attraction_agent import get_attraction_recommendations
+from food_agent import get_food_recommendations
+from weather_service import get_weather_forecast
+from weather_agent import get_weather_recommendations
 
 app = FastAPI()
 
@@ -315,7 +320,18 @@ def generate_ai_itinerary(trip_id: int):
         WHERE trip_id = :trip_id;
     """), {"trip_id": trip_id})
 
-    itinerary_json = generate_itinerary_json(dict(trip))
+    attraction_data = get_attraction_recommendations(dict(trip))
+    food_data = get_food_recommendations(dict(trip))
+    weather_data = get_weather_recommendations(dict(trip))
+
+    print("ATTRACTION AGENT OUTPUT:", attraction_data)
+
+    itinerary_json = generate_itinerary_json(
+        dict(trip),
+        attraction_data=attraction_data,
+        food_data=food_data,
+        weather_data=weather_data
+    )
 
     days_created = 0
     items_created = 0
@@ -349,6 +365,7 @@ def generate_ai_itinerary(trip_id: int):
                     notes,
                     source_agent,
                     source_api,
+                    external_place_id,
                     order_index
                 )
                 VALUES (
@@ -362,6 +379,7 @@ def generate_ai_itinerary(trip_id: int):
                     :notes,
                     :source_agent,
                     :source_api,
+                    :external_place_id,
                     :order_index
                 );
             """), {
@@ -375,6 +393,7 @@ def generate_ai_itinerary(trip_id: int):
                 "notes": item["notes"],
                 "source_agent": item["source_agent"],
                 "source_api": item["source_api"],
+                "external_place_id": item.get("external_place_id"),
                 "order_index": index
             })
 
@@ -540,3 +559,74 @@ def delete_itinerary_item(item_id: int):
         "message": "Itinerary item deleted successfully",
         "deleted_item_id": item_id
     }
+
+
+@app.get("/places-test")
+def places_test():
+    return search_places(
+        query="tourist attractions",
+        location="Los Angeles"
+    )
+
+
+@app.get("/api/trips/{trip_id}/attractions")
+def get_trip_attractions(trip_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    db.close()
+
+    if not trip:
+        return {"error": "Trip not found"}
+
+    return get_attraction_recommendations(dict(trip))
+
+
+@app.get("/api/trips/{trip_id}/foods")
+def get_trip_foods(trip_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    db.close()
+
+    if not trip:
+        return {"error": "Trip not found"}
+
+    return get_food_recommendations(dict(trip))
+
+
+@app.get("/weather-test")
+def weather_test():
+    return get_weather_forecast(
+        latitude=34.0522,
+        longitude=-118.2437,
+        days=5
+    )
+
+
+@app.get("/api/trips/{trip_id}/weather")
+def get_trip_weather(trip_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    db.close()
+
+    if not trip:
+        return {"error": "Trip not found"}
+
+    return get_weather_recommendations(dict(trip))
