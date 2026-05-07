@@ -137,3 +137,32 @@ Orchestrator Agent completed. Backend is now feature-complete. Transitioning to 
 - Build the trip creation form, itinerary view, and per-card editing UI
 - Connect frontend to all existing backend API endpoints
 
+
+# 5/7/2026
+
+Frontend development day. Gave the test UI a proper look and feel.
+
+**UI Redesign**
+- Restructured `index.html` with semantic layout: fixed navbar, 360px left sidebar for the form, and a scrollable right content panel
+- Pulled in Inter font via Google Fonts; built a full design system in `style.css` (color palette, button variants, form inputs, card styles)
+- Left panel: trip creation form with labeled inputs, date pickers, checkboxes, and action buttons
+- Right panel: day-by-day itinerary with styled cards per item; attraction cards use a blue badge, restaurant cards use an orange badge
+- Raw API output collapsed into a `<details>` block at the bottom so it's accessible but not in the way
+
+**Itinerary Cards**
+- Refactored `renderTripDetail` and `updateSingleCard` to share a single `cardHTML()` helper
+- Each card shows type badge, name, time range, address, notes, and inline edit inputs
+- Locked items get a gold border and 🔒 badge
+
+**Weather Emoji on Cards**
+- `getTripDetail()` now parallel-fetches `/weather` alongside the trip data
+- Builds a `weatherMap` keyed by date; each day header and card gets the matching emoji (☀️ / 🌧️ / ⛅)
+
+**Loading Animation**
+- Added a 5-ball bouncing loader that appears in the content area when AI generation starts
+- Two stacked CSS animations per ball: `ball-bounce` (0.6s, physical ease curve) and `ball-color` (2.4s, `steps(4)`) — color snaps to a new value on each bounce, cycling through red-orange, deep blue, yellow-orange, and green
+- Hint text below the balls with animated ellipsis (0 → 6 dots, 400ms per dot, then resets)
+
+**Minor Improvements**
+- Traveler Type changed from a free-text input to a `<select>` with three options: 🌴 Chill, 🙂 Normal, ⚡ Speedrunning
+
