@@ -10,6 +10,7 @@ from attraction_agent import get_attraction_recommendations
 from food_agent import get_food_recommendations
 from weather_service import get_weather_forecast
 from weather_agent import get_weather_recommendations
+from orchestrator_agent import run_orchestrator
 
 app = FastAPI()
 
@@ -320,17 +321,15 @@ def generate_ai_itinerary(trip_id: int):
         WHERE trip_id = :trip_id;
     """), {"trip_id": trip_id})
 
-    attraction_data = get_attraction_recommendations(dict(trip))
-    food_data = get_food_recommendations(dict(trip))
-    weather_data = get_weather_recommendations(dict(trip))
+    orchestrator_result = run_orchestrator(dict(trip))
 
-    print("ATTRACTION AGENT OUTPUT:", attraction_data)
+    agent_outputs = orchestrator_result["agent_outputs"]
 
     itinerary_json = generate_itinerary_json(
         dict(trip),
-        attraction_data=attraction_data,
-        food_data=food_data,
-        weather_data=weather_data
+        attraction_data=agent_outputs["attractions"],
+        food_data=agent_outputs["foods"],
+        weather_data=agent_outputs["weather"]
     )
 
     days_created = 0
@@ -532,6 +531,24 @@ def replace_itinerary_item(item_id: int):
         "message": "Itinerary item replaced successfully",
         "item": dict(updated_item)
     }
+
+@app.get("/api/trips/{trip_id}/orchestrator-test")
+def orchestrator_test(trip_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    db.close()
+
+    if not trip:
+        return {"error": "Trip not found"}
+
+    return run_orchestrator(dict(trip))
+
 
 @app.delete("/api/itinerary-items/{item_id}")
 def delete_itinerary_item(item_id: int):

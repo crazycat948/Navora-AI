@@ -18,9 +18,9 @@ def test_openai_connection():
 
 def generate_itinerary_json(trip, attraction_data=None, food_data=None, weather_data=None):
     prompt = f"""
-You are an AI travel planner.
+You are the Itinerary Planner Agent for an AI Travel Planner.
 
-Generate a structured travel itinerary in JSON format.
+Your job is to create a realistic, structured, day-by-day itinerary using ONLY the agent-provided data.
 
 Trip information:
 - Title: {trip["title"]}
@@ -43,30 +43,27 @@ Food Agent recommendations:
 Weather Agent recommendations:
 {json.dumps(weather_data, indent=2) if weather_data else "None"}
 
-Important rules:
-- For attraction items, prioritize places from the Attraction Agent recommendations.
-- If using an attraction from the recommendations, keep the exact:
-  - name
-  - address
-  - place_id
-- Do NOT invent fake attraction names.
-- For restaurant items, prioritize restaurants from the Food Agent recommendations.
-- If using a restaurant from the recommendations, keep the exact name, address, and place_id.
-- Do NOT invent fake restaurant names.
-- Use Weather Agent recommendations to decide indoor/outdoor activity timing.
-- On rainy days, prefer indoor attractions and restaurants.
-- On sunny days, outdoor attractions are preferred.
-- Create a realistic schedule with proper travel flow.
-- Include both attractions and restaurants.
-
-STRICT RULES:
-- ONLY use attractions from Attraction Agent recommendations.
-- ONLY use restaurants from Food Agent recommendations.
+STRICT PLANNING RULES:
+- For attraction items, ONLY use places from Attraction Agent recommendations.
+- For restaurant items, ONLY use places from Food Agent recommendations.
 - NEVER invent attraction names.
 - NEVER invent restaurant names.
-- Every attraction must include a valid external_place_id.
-- Every restaurant must include a valid external_place_id.
-- Do not repeat the same place more than once in the entire itinerary.
+- NEVER create vague activities like "Explore the beach", "Walk around downtown", or "Shopping time" unless they are provided by an agent.
+- Every attraction item MUST include the exact place_id from Attraction Agent as external_place_id.
+- Every restaurant item MUST include the exact place_id from Food Agent as external_place_id.
+- Do NOT repeat the same place more than once in the entire itinerary.
+- Use the exact name and address from the agent recommendation.
+- Use Weather Agent advice to decide indoor/outdoor activity timing.
+- If weather is sunny, outdoor attractions are preferred.
+- If weather is rainy, indoor attractions and restaurants are preferred.
+- Keep the schedule realistic.
+- Do not overload each day.
+- A normal day should have 2 to 4 itinerary items.
+- Lunch should usually be around 12:00-14:00.
+- Dinner should usually be around 17:30-20:00.
+
+IMPORTANT:
+If there are not enough unique agent-provided places for every day, create fewer items instead of inventing new places.
 
 Return ONLY valid JSON with this structure:
 
@@ -86,8 +83,8 @@ Return ONLY valid JSON with this structure:
           "address": "string",
           "notes": "string",
           "source_agent": "Attraction Agent or Food Agent",
-          "source_api": "Google Places + OpenAI or OpenAI",
-          "external_place_id": "string or null"
+          "source_api": "Google Places or Google Places + OpenAI",
+          "external_place_id": "string"
         }}
       ]
     }}
