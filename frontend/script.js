@@ -42,9 +42,42 @@ async function createTrip() {
   }
 }
 
+let dotsInterval = null;
+
+function showLoader() {
+  document.getElementById("tripDetail").innerHTML = `
+    <div class="empty-state">
+      <div class="bounce-loader">
+        <span class="bounce-ball"></span>
+        <span class="bounce-ball"></span>
+        <span class="bounce-ball"></span>
+        <span class="bounce-ball"></span>
+        <span class="bounce-ball"></span>
+      </div>
+      <p class="loader-hint">Generating your itinerary may take one to two minutes<span id="loader-dots"></span></p>
+    </div>
+  `;
+
+  let count = 0;
+  dotsInterval = setInterval(() => {
+    const el = document.getElementById("loader-dots");
+    if (!el) { clearInterval(dotsInterval); return; }
+    count = count >= 6 ? 0 : count + 1;
+    el.textContent = ".".repeat(count);
+  }, 400);
+}
+
+function clearLoader() {
+  if (dotsInterval) {
+    clearInterval(dotsInterval);
+    dotsInterval = null;
+  }
+}
+
 async function generateAIItinerary() {
   const tripId = document.getElementById("trip_id").value;
 
+  showLoader();
   setLoading("Generating AI itinerary...");
 
   try {
@@ -57,6 +90,7 @@ async function generateAIItinerary() {
 
     await getTripDetail();
   } finally {
+    clearLoader();
     clearLoading();
   }
 }
@@ -70,14 +104,62 @@ async function getTripHistory() {
 async function getTripDetail() {
   const tripId = document.getElementById("trip_id").value;
 
-  const res = await fetch(`${API_BASE}/api/trips/${tripId}`);
-  const data = await res.json();
+  const [tripRes, weatherRes] = await Promise.all([
+    fetch(`${API_BASE}/api/trips/${tripId}`),
+    fetch(`${API_BASE}/api/trips/${tripId}/weather`)
+  ]);
+
+  const data = await tripRes.json();
+  const weatherData = await weatherRes.json();
+
+  const weatherMap = {};
+  if (weatherData.daily_recommendations) {
+    weatherData.daily_recommendations.forEach(d => {
+      weatherMap[d.date] = d.weather_type;
+    });
+  }
 
   showOutput(data);
-  renderTripDetail(data);
+  renderTripDetail(data, weatherMap);
 }
 
-function renderTripDetail(data) {
+const WEATHER_EMOJI = {
+  sunny: "☀️",
+  rainy: "🌧️",
+  cloudy: "⛅",
+};
+
+function cardHTML(item, weatherEmoji = "") {
+  const typeClass = item.item_type === "restaurant" ? "restaurant" : "attraction";
+  const typeLabel = item.item_type === "restaurant" ? "🍽 Restaurant" : "🏛 Attraction";
+  const lockBadge = item.locked ? '<span class="lock-badge">🔒</span>' : "";
+  const time = `${item.start_time.slice(0,5)} – ${item.end_time.slice(0,5)}`;
+  const weatherSpan = weatherEmoji ? `<span class="weather-emoji">${weatherEmoji}</span>` : "";
+
+  return `
+    <div class="card-top">
+      <span class="type-badge ${typeClass}">${typeLabel}</span>
+      <span class="card-name">${item.name}</span>
+      ${weatherSpan}<span class="time-badge">${time}</span>
+      ${lockBadge}
+    </div>
+    <p class="card-address">📍 ${item.address}</p>
+    <p class="card-notes">${item.notes}</p>
+    <div class="card-edit">
+      <input class="card-input" id="start_${item.id}" placeholder="Start" value="${item.start_time.slice(0,5)}">
+      <input class="card-input" id="end_${item.id}" placeholder="End" value="${item.end_time.slice(0,5)}">
+      <input class="card-input" id="notes_${item.id}" placeholder="Notes" value="${item.notes}">
+    </div>
+    <div class="card-actions">
+      <button class="btn btn-success btn-sm" onclick="updateItem(${item.id})">Save</button>
+      <button class="btn btn-outline btn-sm" onclick="replaceItem(${item.id})">Replace</button>
+      <button class="btn btn-warning btn-sm" onclick="lockItem(${item.id})">Lock</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">Delete</button>
+    </div>
+  `;
+}
+
+function renderTripDetail(data, weatherMap = {}) {
   const container = document.getElementById("tripDetail");
   container.innerHTML = "";
 
@@ -86,44 +168,31 @@ function renderTripDetail(data) {
     return;
   }
 
-  const title = document.createElement("h3");
-  title.textContent = data.trip.title;
-  container.appendChild(title);
+  const header = document.createElement("div");
+  header.className = "trip-header";
+  header.innerHTML = `<h1 class="trip-title">${data.trip.title}</h1>`;
+  container.appendChild(header);
 
   data.days.forEach(day => {
     const dayDiv = document.createElement("div");
+    dayDiv.className = "day-block";
 
-    const dayTitle = document.createElement("h3");
-    dayTitle.textContent = `Day ${day.day_number} - ${day.date} - ${day.theme}`;
-    dayDiv.appendChild(dayTitle);
+    const weatherType = weatherMap[day.date] || "";
+    const weatherEmoji = WEATHER_EMOJI[weatherType] || "";
+
+    dayDiv.innerHTML = `
+      <div class="day-header">
+        <span class="day-number-badge">Day ${day.day_number}</span>
+        <span class="day-theme">${day.theme}</span>
+        <span class="day-date">${weatherEmoji} ${day.date}</span>
+      </div>
+    `;
 
     day.items.forEach(item => {
       const card = document.createElement("div");
       card.id = `card_${item.id}`;
-      card.style.border = "1px solid black";
-      card.style.margin = "10px";
-      card.style.padding = "10px";
-
-      card.innerHTML = `
-        <p><strong>ID:</strong> ${item.id}</p>
-        <p><strong>Type:</strong> ${item.item_type}</p>
-        <p><strong>Time:</strong> ${item.start_time} - ${item.end_time}</p>
-        <p><strong>Name:</strong> ${item.name}</p>
-        <p><strong>Address:</strong> ${item.address}</p>
-        <p><strong>Notes:</strong> ${item.notes}</p>
-        <p><strong>Locked:</strong> ${item.locked}</p>
-
-        <input id="start_${item.id}" placeholder="Start Time" value="${item.start_time.slice(0,5)}">
-        <input id="end_${item.id}" placeholder="End Time" value="${item.end_time.slice(0,5)}">
-        <input id="notes_${item.id}" placeholder="Notes" value="${item.notes}">
-        <br><br>
-
-        <button onclick="updateItem(${item.id})">Update</button>
-        <button onclick="replaceItem(${item.id})">Replace</button>
-        <button onclick="lockItem(${item.id})">Lock</button>
-        <button onclick="deleteItem(${item.id})">Delete</button>
-      `;
-
+      card.className = `item-card${item.locked ? " locked" : ""}`;
+      card.innerHTML = cardHTML(item, weatherEmoji);
       dayDiv.appendChild(card);
     });
 
@@ -176,28 +245,10 @@ async function replaceItem(itemId) {
 
 function updateSingleCard(updatedItem) {
   const card = document.getElementById(`card_${updatedItem.id}`);
-
   if (!card) return;
 
-  card.innerHTML = `
-    <p><strong>ID:</strong> ${updatedItem.id}</p>
-    <p><strong>Type:</strong> ${updatedItem.item_type}</p>
-    <p><strong>Time:</strong> ${updatedItem.start_time} - ${updatedItem.end_time}</p>
-    <p><strong>Name:</strong> ${updatedItem.name}</p>
-    <p><strong>Address:</strong> ${updatedItem.address}</p>
-    <p><strong>Notes:</strong> ${updatedItem.notes}</p>
-    <p><strong>Locked:</strong> ${updatedItem.locked}</p>
-
-    <input id="start_${updatedItem.id}" value="${updatedItem.start_time.slice(0,5)}">
-    <input id="end_${updatedItem.id}" value="${updatedItem.end_time.slice(0,5)}">
-    <input id="notes_${updatedItem.id}" value="${updatedItem.notes}">
-    <br><br>
-
-    <button onclick="updateItem(${updatedItem.id})">Update</button>
-    <button onclick="replaceItem(${updatedItem.id})">Replace</button>
-    <button onclick="lockItem(${updatedItem.id})">Lock</button>
-    <button onclick="deleteItem(${updatedItem.id})">Delete</button>
-  `;
+  card.className = `item-card${updatedItem.locked ? " locked" : ""}`;
+  card.innerHTML = cardHTML(updatedItem);
 }
 
 async function deleteItem(itemId) {

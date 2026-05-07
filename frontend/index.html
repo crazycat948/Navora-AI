@@ -1,56 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Navora AI Test Frontend</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navora — AI Travel Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Navora AI Travel Planner</h1>
 
-  <h2>Create Trip</h2>
-  <input id="title" placeholder="Title" value="LA Trip">
-  <input id="destination_city" placeholder="Destination City" value="Los Angeles">
-  <input id="departure_city" placeholder="Departure City" value="Dallas">
-  <input id="arrival_date" type="date" value="2026-06-01">
-  <input id="departure_date" type="date" value="2026-06-05">
-  <input id="traveler_type" placeholder="Traveler Type" value="normal">
-  <input id="budget" type="number" value="2000">
+  <header class="navbar">
+    <div class="navbar-brand">
+      <span class="navbar-logo">✈</span>
+      <span class="navbar-title">Navora</span>
+      <span class="navbar-sub">AI Travel Planner</span>
+    </div>
+    <div id="loading" class="navbar-status"></div>
+  </header>
 
-  <label>
-    Has Car
-    <input id="has_car" type="checkbox" checked>
-  </label>
+  <main class="main-layout">
 
-  <label>
-    Need Hotel
-    <input id="need_hotel" type="checkbox" checked>
-  </label>
+    <aside class="side-panel">
 
-  <label>
-    Need Flight
-    <input id="need_flight" type="checkbox" checked>
-  </label>
+      <section class="panel-section">
+        <h2 class="section-title">Plan Your Trip</h2>
 
-  <button onclick="createTrip()">Create Trip</button>
+        <div class="form-group">
+          <label class="form-label">Trip Title</label>
+          <input class="form-input" id="title" placeholder="e.g. LA Summer Trip" value="LA Trip">
+        </div>
 
-  <hr>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">From</label>
+            <input class="form-input" id="departure_city" placeholder="Departure City" value="Dallas">
+          </div>
+          <div class="form-group">
+            <label class="form-label">To</label>
+            <input class="form-input" id="destination_city" placeholder="Destination City" value="Los Angeles">
+          </div>
+        </div>
 
-  <h2>Actions</h2>
-  <input id="trip_id" placeholder="Trip ID">
-  <button onclick="generateAIItinerary()">Generate AI Itinerary</button>
-  <button onclick="getTripDetail()">Get Trip Detail</button>
-  <button onclick="getTripHistory()">Get Trip History</button>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Arrival Date</label>
+            <input class="form-input" id="arrival_date" type="date" value="2026-06-01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Departure Date</label>
+            <input class="form-input" id="departure_date" type="date" value="2026-06-05">
+          </div>
+        </div>
 
-  <p id="loading"></p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Traveler Type</label>
+            <select class="form-input" id="traveler_type">
+              <option value="chill">🌴 Chill</option>
+              <option value="normal" selected>🙂 Normal</option>
+              <option value="speedrunning">⚡ Speedrunning</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Budget (USD)</label>
+            <input class="form-input" id="budget" type="number" value="2000">
+          </div>
+        </div>
 
-  <hr>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input id="has_car" type="checkbox" checked>
+            <span>Has Car</span>
+          </label>
+          <label class="checkbox-label">
+            <input id="need_hotel" type="checkbox" checked>
+            <span>Need Hotel</span>
+          </label>
+          <label class="checkbox-label">
+            <input id="need_flight" type="checkbox" checked>
+            <span>Need Flight</span>
+          </label>
+        </div>
 
-  <h2>Trip Detail</h2>
-  <div id="tripDetail"></div>
+        <button class="btn btn-primary btn-full" onclick="createTrip()">Create Trip</button>
+      </section>
 
-  <hr>
+      <section class="panel-section">
+        <h2 class="section-title">Actions</h2>
 
-  <h2>Raw Output</h2>
-  <pre id="output"></pre>
+        <div class="form-group">
+          <label class="form-label">Trip ID</label>
+          <input class="form-input" id="trip_id" placeholder="Enter Trip ID">
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-primary btn-full" onclick="generateAIItinerary()">✨ Generate AI Itinerary</button>
+          <button class="btn btn-outline btn-full" onclick="getTripDetail()">View Trip Detail</button>
+          <button class="btn btn-outline btn-full" onclick="getTripHistory()">View Trip History</button>
+        </div>
+      </section>
+
+    </aside>
+
+    <section class="content-panel">
+      <div id="tripDetail" class="trip-detail">
+        <div class="empty-state">
+          <div class="empty-icon">🗺️</div>
+          <p>Create a trip or enter a Trip ID to view your itinerary.</p>
+        </div>
+      </div>
+
+      <details class="raw-output-wrapper">
+        <summary>Raw API Output</summary>
+        <pre id="output" class="raw-output"></pre>
+      </details>
+    </section>
+
+  </main>
 
   <script src="script.js"></script>
 </body>
