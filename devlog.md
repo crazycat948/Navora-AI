@@ -188,3 +188,11 @@ Frontend development day. Gave the test UI a proper look and feel.
 - `createTrip()` now auto-chains into itinerary generation immediately after the trip is created — one click does everything
 - Trip ID is written to a hidden field internally; users never see or interact with it, preventing ID-guessing attacks on other users' trips
 
+**City Autocomplete & Input Validation**
+- Created `city_service.py` — calls Google Places Text Search with `includedType: "locality"` to restrict results to real cities only, returns up to 5 matches with name and full formatted address
+- Added `GET /api/cities/search?q=` endpoint (no auth required); returns empty list for queries shorter than 2 characters
+- Created `autocomplete.js` — `setupCityAutocomplete()` dynamically injects an absolutely-positioned dropdown into each city input's parent; debounces requests by 300ms, closes on blur (150ms delay to allow click to register) and on Escape
+- Dropdown displays full address for disambiguation but writes only the city name into the input on selection
+- Applied to both Departure City and Destination City fields in `index.html`
+- Added `.city-dropdown` and `.city-dropdown-item` styles to `style.css`, consistent with the existing design system
+

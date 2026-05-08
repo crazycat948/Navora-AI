@@ -494,6 +494,34 @@ select.form-input {
   flex-wrap: wrap;
 }
 
+/* ── City Autocomplete ────────────────────────────────────── */
+.city-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.city-dropdown-item {
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #1e293b;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.city-dropdown-item:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
 /* ── Raw Output ───────────────────────────────────────────── */
 .raw-output-wrapper {
   border: 1px solid #e2e8f0;

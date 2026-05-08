@@ -11,6 +11,7 @@ from food_agent import get_food_recommendations
 from weather_service import get_weather_forecast
 from weather_agent import get_weather_recommendations
 from orchestrator_agent import run_orchestrator
+from city_service import search_cities
 from auth_service import hash_password, verify_password, create_access_token, decode_access_token
 
 app = FastAPI()
@@ -154,6 +155,13 @@ def login_user(user: UserLogin):
             "username": existing_user["username"]
         }
     }
+
+
+@app.get("/api/cities/search")
+def city_search(q: str = ""):
+    if len(q) < 2:
+        return {"cities": []}
+    return {"cities": search_cities(q)}
 
 
 @app.get("/")
