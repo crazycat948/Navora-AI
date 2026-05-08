@@ -12,6 +12,7 @@ from weather_service import get_weather_forecast
 from weather_agent import get_weather_recommendations
 from orchestrator_agent import run_orchestrator
 from city_service import search_cities
+from travel_recommendation_service import generate_hotel_flight_recommendations
 from auth_service import hash_password, verify_password, create_access_token, decode_access_token
 
 app = FastAPI()
@@ -378,11 +379,25 @@ def get_trip_detail(trip_id: int):
             "items": [dict(item) for item in items]
         })
 
+    hotels = db.execute(text("""
+        SELECT *
+        FROM hotel_recommendations
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchall()
+
+    flights = db.execute(text("""
+        SELECT *
+        FROM flight_recommendations
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchall()
+
     db.close()
 
     return {
         "trip": dict(trip),
-        "days": result_days
+        "days": result_days,
+        "hotels": [dict(hotel) for hotel in hotels],
+        "flights": [dict(flight) for flight in flights]
     }
 
 @app.get("/api/trips")
@@ -659,6 +674,126 @@ def replace_itinerary_item(item_id: int):
         "message": "Itinerary item replaced successfully",
         "item": dict(updated_item)
     }
+
+@app.post("/api/trips/{trip_id}/travel-recommendations")
+def generate_travel_recommendations(
+    trip_id: int,
+    authorization: str = Header(None)
+):
+    user_id = get_current_user_id(authorization)
+
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id
+          AND user_id = :user_id;
+    """), {
+        "trip_id": trip_id,
+        "user_id": user_id
+    }).mappings().fetchone()
+
+    if not trip:
+        db.close()
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    recommendations = generate_hotel_flight_recommendations(dict(trip))
+
+    hotels = recommendations.get("hotels", [])
+    flights = recommendations.get("flights", [])
+
+    # Clear old recommendations
+    db.execute(text("""
+        DELETE FROM hotel_recommendations
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id})
+
+    db.execute(text("""
+        DELETE FROM flight_recommendations
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id})
+
+    # Insert hotels
+    for hotel in hotels:
+        db.execute(text("""
+            INSERT INTO hotel_recommendations (
+                trip_id,
+                hotel_name,
+                address,
+                price_estimate,
+                rating,
+                notes,
+                source_api,
+                external_hotel_id
+            )
+            VALUES (
+                :trip_id,
+                :hotel_name,
+                :address,
+                :price_estimate,
+                :rating,
+                :notes,
+                :source_api,
+                :external_hotel_id
+            );
+        """), {
+            "trip_id": trip_id,
+            "hotel_name": hotel.get("hotel_name"),
+            "address": hotel.get("address"),
+            "price_estimate": hotel.get("price_estimate"),
+            "rating": hotel.get("rating"),
+            "notes": hotel.get("notes"),
+            "source_api": hotel.get("source_api"),
+            "external_hotel_id": hotel.get("external_hotel_id")
+        })
+
+    # Insert flights
+    for flight in flights:
+        db.execute(text("""
+            INSERT INTO flight_recommendations (
+                trip_id,
+                airline,
+                departure_airport,
+                arrival_airport,
+                departure_time,
+                arrival_time,
+                price_estimate,
+                notes,
+                source_api
+            )
+            VALUES (
+                :trip_id,
+                :airline,
+                :departure_airport,
+                :arrival_airport,
+                :departure_time,
+                :arrival_time,
+                :price_estimate,
+                :notes,
+                :source_api
+            );
+        """), {
+            "trip_id": trip_id,
+            "airline": flight.get("airline"),
+            "departure_airport": flight.get("departure_airport"),
+            "arrival_airport": flight.get("arrival_airport"),
+            "departure_time": flight.get("departure_time"),
+            "arrival_time": flight.get("arrival_time"),
+            "price_estimate": flight.get("price_estimate"),
+            "notes": flight.get("notes"),
+            "source_api": flight.get("source_api")
+        })
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Travel recommendations generated successfully",
+        "trip_id": trip_id,
+        "recommendations": recommendations
+    }
+
 
 @app.get("/api/trips/{trip_id}/orchestrator-test")
 def orchestrator_test(trip_id: int):

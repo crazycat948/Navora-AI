@@ -196,3 +196,24 @@ Frontend development day. Gave the test UI a proper look and feel.
 - Applied to both Departure City and Destination City fields in `index.html`
 - Added `.city-dropdown` and `.city-dropdown-item` styles to `style.css`, consistent with the existing design system
 
+
+# 5/8/2026
+
+Hotel and flight recommendation module shipped. Backend feature-complete.
+
+**Hotel & Flight Recommendations**
+- Last planned module from the original project scope — now live
+- Originally planned to integrate Amadeus API for real flight/hotel data, but since this is not a core feature of the product, decided to use the OpenAI API instead for recommendation generation
+- Built `travel_recommendation_service.py`: calls OpenAI with trip context (destination, dates, budget, traveler type) and returns structured hotel and flight suggestions
+- Added `POST /api/trips/{trip_id}/travel-recommendations` endpoint — triggered automatically after AI itinerary generation if `need_hotel` or `need_flight` is checked
+- Results stored in `hotel_recommendations` and `flight_recommendations` tables; returned as part of the `GET /api/trips/{trip_id}` response
+
+**Frontend**
+- `createTrip()` now auto-calls the travel recommendations endpoint after itinerary generation when applicable
+- `renderTripDetail()` updated to render hotel and flight cards at the bottom of the itinerary using `.rec-section`, `.rec-card` component classes
+- Added corresponding CSS classes to `style.css` — consistent with the existing card design system
+
+**Project Status**
+- All originally scoped modules are now implemented
+- Remaining work: UI/UX polish and final detail pass before demo
+

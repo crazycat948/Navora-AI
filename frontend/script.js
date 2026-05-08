@@ -63,6 +63,14 @@ async function createTrip() {
     const genData = await genRes.json();
     showOutput(genData);
 
+    if (tripData.need_hotel || tripData.need_flight) {
+      setLoading("Generating hotel & flight recommendations...");
+      await fetch(`${API_BASE}/api/trips/${tripId}/travel-recommendations`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+    }
+
     await getTripDetail();
   } finally {
     clearLoader();
@@ -226,6 +234,47 @@ function renderTripDetail(data, weatherMap = {}) {
 
     container.appendChild(dayDiv);
   });
+
+  if (data.hotels && data.hotels.length > 0) {
+    const hotelSection = document.createElement("div");
+    hotelSection.className = "rec-section";
+    hotelSection.innerHTML = `<p class="rec-section-title">🏨 Hotel Recommendations</p>`;
+
+    data.hotels.forEach(hotel => {
+      const card = document.createElement("div");
+      card.className = "rec-card";
+      card.innerHTML = `
+        <p class="rec-card-title">${hotel.hotel_name}</p>
+        <p class="rec-card-row">📍 ${hotel.address}</p>
+        <p class="rec-card-row">💰 $${hotel.price_estimate} &nbsp;·&nbsp; ⭐ ${hotel.rating}</p>
+        <p class="rec-card-row">${hotel.notes}</p>
+      `;
+      hotelSection.appendChild(card);
+    });
+
+    container.appendChild(hotelSection);
+  }
+
+  if (data.flights && data.flights.length > 0) {
+    const flightSection = document.createElement("div");
+    flightSection.className = "rec-section";
+    flightSection.innerHTML = `<p class="rec-section-title">✈️ Flight Recommendations</p>`;
+
+    data.flights.forEach(flight => {
+      const card = document.createElement("div");
+      card.className = "rec-card";
+      card.innerHTML = `
+        <p class="rec-card-title">${flight.airline}</p>
+        <p class="rec-card-row">🛫 ${flight.departure_airport} → ${flight.arrival_airport}</p>
+        <p class="rec-card-row">🕐 ${flight.departure_time} → ${flight.arrival_time}</p>
+        <p class="rec-card-row">💰 $${flight.price_estimate}</p>
+        <p class="rec-card-row">${flight.notes}</p>
+      `;
+      flightSection.appendChild(card);
+    });
+
+    container.appendChild(flightSection);
+  }
 }
 
 async function updateItem(itemId) {
