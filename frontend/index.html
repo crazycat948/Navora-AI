@@ -10,13 +10,21 @@
 </head>
 <body>
 
+  <script src="auth.js"></script>
+  <script>
+    requireLogin();
+  </script>
+
   <header class="navbar">
     <div class="navbar-brand">
       <span class="navbar-logo">✈</span>
       <span class="navbar-title">Navora</span>
       <span class="navbar-sub">AI Travel Planner</span>
     </div>
-    <div id="loading" class="navbar-status"></div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div id="loading" class="navbar-status"></div>
+      <button class="btn btn-outline btn-sm" style="color:#93c5fd;border-color:#93c5fd;" onclick="logoutUser()">Logout</button>
+    </div>
   </header>
 
   <main class="main-layout">
@@ -89,15 +97,10 @@
       <section class="panel-section">
         <h2 class="section-title">Actions</h2>
 
-        <div class="form-group">
-          <label class="form-label">Trip ID</label>
-          <input class="form-input" id="trip_id" placeholder="Enter Trip ID">
-        </div>
+        <input id="trip_id" type="hidden">
 
         <div class="action-buttons">
-          <button class="btn btn-primary btn-full" onclick="generateAIItinerary()">✨ Generate AI Itinerary</button>
-          <button class="btn btn-outline btn-full" onclick="getTripDetail()">View Trip Detail</button>
-          <button class="btn btn-outline btn-full" onclick="getTripHistory()">View Trip History</button>
+          <button class="btn btn-outline btn-full" onclick="window.location.href='history.html'">View Trip History</button>
         </div>
       </section>
 

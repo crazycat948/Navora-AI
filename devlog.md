@@ -166,3 +166,25 @@ Frontend development day. Gave the test UI a proper look and feel.
 **Minor Improvements**
 - Traveler Type changed from a free-text input to a `<select>` with three options: 🌴 Chill, 🙂 Normal, ⚡ Speedrunning
 
+**Auth System**
+- Built `auth_service.py` using `passlib` + `bcrypt` for password hashing and `python-jose` for JWT (HS256, 7-day expiry, secret key from `.env`)
+- Added `POST /api/auth/register` and `POST /api/auth/login` endpoints to `main.py`
+- `get_current_user_id()` helper decodes Bearer token and raises 401 on invalid/missing auth
+- `POST /api/trips/create` and `GET /api/trips` are now auth-protected — trips are scoped to the logged-in user
+- Added `DELETE /api/trips/{trip_id}` endpoint with ownership check; explicitly deletes `itinerary_items` and `itinerary_days` before deleting the trip (safe even though CASCADE is already in place)
+
+**Auth Frontend**
+- Created `auth.js` with `loginUser()`, `registerUser()`, `logoutUser()`, and `requireLogin()` — token stored in `localStorage`
+- Built `login.html` and `register.html` with the same Inter font, deep-blue navbar, and centered card design as the main app
+- `index.html` now calls `requireLogin()` on load and shows a Logout button in the navbar
+
+**Trip History & Detail Pages**
+- Created `history.html` + `history.js`: fetches the current user's trips (auth-gated), renders them as a hoverable card grid, each card links to `trip-detail.html` via `localStorage`
+- Created `trip-detail.html`: reads `selectedTripId` from `localStorage`, shows bounce loader while fetching, then renders the full itinerary using the existing `renderTripDetail()` from `script.js`
+- Added `deleteTrip()` to `history.js` with a confirm dialog; Delete button on each history card uses `event.stopPropagation()` to avoid triggering the card's click-to-navigate
+
+**UX Flow Fix**
+- Removed the manual Trip ID input and Generate AI Itinerary button from `index.html`
+- `createTrip()` now auto-chains into itinerary generation immediately after the trip is created — one click does everything
+- Trip ID is written to a hidden field internally; users never see or interact with it, preventing ID-guessing attacks on other users' trips
+

@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -11,6 +11,7 @@ from food_agent import get_food_recommendations
 from weather_service import get_weather_forecast
 from weather_agent import get_weather_recommendations
 from orchestrator_agent import run_orchestrator
+from auth_service import hash_password, verify_password, create_access_token, decode_access_token
 
 app = FastAPI()
 
@@ -21,6 +22,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class UserRegister(BaseModel):
+    email: str
+    password: str
+    username: str
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
 
 
 class TripCreate(BaseModel):
@@ -45,6 +57,105 @@ class ItineraryItemUpdate(BaseModel):
     locked: Optional[bool] = None
 
 
+def get_current_user_id(authorization: str):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+
+    try:
+        token_type, token = authorization.split(" ")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    if token_type.lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    payload = decode_access_token(token)
+
+    if not payload or "user_id" not in payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    return payload["user_id"]
+
+
+@app.post("/api/auth/register")
+def register_user(user: UserRegister):
+    db = SessionLocal()
+
+    existing_user = db.execute(text("""
+        SELECT *
+        FROM users
+        WHERE email = :email;
+    """), {"email": user.email}).mappings().fetchone()
+
+    if existing_user:
+        db.close()
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    password_hash = hash_password(user.password)
+
+    result = db.execute(text("""
+        INSERT INTO users (email, password_hash, username)
+        VALUES (:email, :password_hash, :username)
+        RETURNING id, email, username, created_at;
+    """), {
+        "email": user.email,
+        "password_hash": password_hash,
+        "username": user.username
+    })
+
+    new_user = result.mappings().fetchone()
+
+    db.commit()
+    db.close()
+
+    token = create_access_token({
+        "user_id": new_user["id"],
+        "email": new_user["email"]
+    })
+
+    return {
+        "message": "User registered successfully",
+        "access_token": token,
+        "token_type": "bearer",
+        "user": dict(new_user)
+    }
+
+
+@app.post("/api/auth/login")
+def login_user(user: UserLogin):
+    db = SessionLocal()
+
+    existing_user = db.execute(text("""
+        SELECT *
+        FROM users
+        WHERE email = :email;
+    """), {"email": user.email}).mappings().fetchone()
+
+    db.close()
+
+    if not existing_user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not verify_password(user.password, existing_user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    token = create_access_token({
+        "user_id": existing_user["id"],
+        "email": existing_user["email"]
+    })
+
+    return {
+        "message": "Login successful",
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": existing_user["id"],
+            "email": existing_user["email"],
+            "username": existing_user["username"]
+        }
+    }
+
+
 @app.get("/")
 def root():
     return {"message": "AI Travel Planner Backend is running"}
@@ -63,11 +174,13 @@ def openai_test():
 
 
 @app.post("/api/trips/create")
-def create_trip(trip: TripCreate):
+def create_trip(trip: TripCreate, Authorization: str = Header(None)):
+    user_id = get_current_user_id(Authorization)
     db = SessionLocal()
 
     query = text("""
         INSERT INTO trips (
+            user_id,
             title,
             destination_city,
             departure_city,
@@ -80,6 +193,7 @@ def create_trip(trip: TripCreate):
             need_flight
         )
         VALUES (
+            :user_id,
             :title,
             :destination_city,
             :departure_city,
@@ -95,6 +209,7 @@ def create_trip(trip: TripCreate):
     """)
 
     result = db.execute(query, {
+        "user_id": user_id,
         "title": trip.title,
         "destination_city": trip.destination_city,
         "departure_city": trip.departure_city,
@@ -263,14 +378,19 @@ def get_trip_detail(trip_id: int):
     }
 
 @app.get("/api/trips")
-def get_trip_history():
+def get_trip_history(authorization: str = Header(None)):
+    user_id = get_current_user_id(authorization)
+
     db = SessionLocal()
 
     trips = db.execute(text("""
         SELECT *
         FROM trips
+        WHERE user_id = :user_id
         ORDER BY created_at DESC;
-    """)).mappings().fetchall()
+    """), {
+        "user_id": user_id
+    }).mappings().fetchall()
 
     db.close()
 
@@ -548,6 +668,54 @@ def orchestrator_test(trip_id: int):
         return {"error": "Trip not found"}
 
     return run_orchestrator(dict(trip))
+
+
+@app.delete("/api/trips/{trip_id}")
+def delete_trip(trip_id: int, authorization: str = Header(None)):
+    user_id = get_current_user_id(authorization)
+
+    db = SessionLocal()
+
+    existing_trip = db.execute(text("""
+        SELECT *
+        FROM trips
+        WHERE id = :trip_id
+          AND user_id = :user_id;
+    """), {
+        "trip_id": trip_id,
+        "user_id": user_id
+    }).mappings().fetchone()
+
+    if not existing_trip:
+        db.close()
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    db.execute(text("""
+        DELETE FROM itinerary_items
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id})
+
+    db.execute(text("""
+        DELETE FROM itinerary_days
+        WHERE trip_id = :trip_id;
+    """), {"trip_id": trip_id})
+
+    db.execute(text("""
+        DELETE FROM trips
+        WHERE id = :trip_id
+          AND user_id = :user_id;
+    """), {
+        "trip_id": trip_id,
+        "user_id": user_id
+    })
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Trip deleted successfully",
+        "deleted_trip_id": trip_id
+    }
 
 
 @app.delete("/api/itinerary-items/{item_id}")

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Navora AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { justify-content: unset; }
+    .auth-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f1f5f9;
+    }
+    .auth-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .auth-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .auth-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 0;
+    }
+    .auth-footer {
+      font-size: 13px;
+      color: #64748b;
+      text-align: center;
+    }
+    .auth-footer a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .auth-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="navbar-brand">
+      <span class="navbar-logo">✈</span>
+      <span class="navbar-title">Navora</span>
+      <span class="navbar-sub">AI Travel Planner</span>
+    </div>
+  </header>
+
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <p class="auth-title">Create your account</p>
+        <p class="auth-subtitle">Start planning your AI-powered trips</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="username" placeholder="e.g. johndoe">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="email" type="email" placeholder="you@example.com">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="password" type="password" placeholder="••••••••">
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="registerUser()">Create Account</button>
+
+      <p class="auth-footer">
+        Already have an account? <a href="login.html">Sign in</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+</body>
+</html>

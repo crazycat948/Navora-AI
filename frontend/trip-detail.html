@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trip Detail — Navora AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <script src="auth.js"></script>
+  <script>requireLogin();</script>
+
+  <header class="navbar">
+    <div class="navbar-brand">
+      <span class="navbar-logo">✈</span>
+      <span class="navbar-title">Navora</span>
+      <span class="navbar-sub">AI Travel Planner</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="loading" class="navbar-status"></div>
+      <button class="btn btn-outline btn-sm" style="color:#93c5fd;border-color:#93c5fd;" onclick="window.location.href='history.html'">← History</button>
+      <button class="btn btn-outline btn-sm" style="color:#93c5fd;border-color:#93c5fd;" onclick="window.location.href='index.html'">+ New Trip</button>
+      <button class="btn btn-outline btn-sm" style="color:#93c5fd;border-color:#93c5fd;" onclick="logoutUser()">Logout</button>
+    </div>
+  </header>
+
+  <section class="content-panel">
+    <input id="trip_id" type="hidden">
+    <pre id="output" style="display:none;"></pre>
+    <div id="tripDetail" class="trip-detail"></div>
+  </section>
+
+  <script src="script.js"></script>
+  <script>
+    const selectedTripId = localStorage.getItem("selectedTripId");
+
+    if (!selectedTripId) {
+      alert("No trip selected.");
+      window.location.href = "history.html";
+    } else {
+      document.getElementById("trip_id").value = selectedTripId;
+      showLoader();
+      document.querySelector(".loader-hint").innerHTML = 'it will take a while to load your trip detail<span id="loader-dots"></span>';
+      getTripDetail();
+    }
+  </script>
+</body>
+</html>

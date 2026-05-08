@@ -1,0 +1,109 @@
+-- =========================
+-- USERS
+-- =========================
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    username TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================
+-- TRIPS
+-- =========================
+CREATE TABLE trips (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT,
+    destination_city TEXT,
+    departure_city TEXT,
+    arrival_date DATE,
+    departure_date DATE,
+    traveler_type TEXT,
+    budget INTEGER,
+    has_car BOOLEAN,
+    need_hotel BOOLEAN,
+    need_flight BOOLEAN,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================
+-- TRIP PREFERENCES
+-- =========================
+CREATE TABLE trip_preferences (
+    id SERIAL PRIMARY KEY,
+    trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,
+    interests JSONB,
+    food_preferences JSONB,
+    accommodation_preferences JSONB,
+    must_visit_places JSONB,
+    avoid_preferences JSONB,
+    group_size INTEGER
+);
+
+-- =========================
+-- ITINERARY DAYS
+-- =========================
+CREATE TABLE itinerary_days (
+    id SERIAL PRIMARY KEY,
+    trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,
+    date DATE,
+    day_number INTEGER,
+    theme TEXT,
+    notes TEXT
+);
+
+-- =========================
+-- ITINERARY ITEMS
+-- =========================
+CREATE TABLE itinerary_items (
+    id SERIAL PRIMARY KEY,
+    trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,
+    day_id INTEGER REFERENCES itinerary_days(id) ON DELETE CASCADE,
+    item_type TEXT,
+    start_time TIME,
+    end_time TIME,
+    name TEXT,
+    address TEXT,
+    notes TEXT,
+    source_agent TEXT,
+    source_api TEXT,
+    external_place_id TEXT,
+    order_index INTEGER,
+    locked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================
+-- HOTEL RECOMMENDATIONS
+-- =========================
+CREATE TABLE hotel_recommendations (
+    id SERIAL PRIMARY KEY,
+    trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,
+    hotel_name TEXT,
+    address TEXT,
+    price_estimate INTEGER,
+    rating FLOAT,
+    notes TEXT,
+    source_api TEXT,
+    external_hotel_id TEXT
+);
+
+-- =========================
+-- FLIGHT RECOMMENDATIONS
+-- =========================
+CREATE TABLE flight_recommendations (
+    id SERIAL PRIMARY KEY,
+    trip_id INTEGER REFERENCES trips(id) ON DELETE CASCADE,
+    airline TEXT,
+    departure_airport TEXT,
+    arrival_airport TEXT,
+    departure_time TIMESTAMP,
+    arrival_time TIMESTAMP,
+    price_estimate INTEGER,
+    notes TEXT,
+    source_api TEXT
+);

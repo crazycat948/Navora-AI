@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trip History — Navora AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .history-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+    }
+    .history-page-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 20px;
+    }
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .history-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 18px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .history-card:hover {
+      box-shadow: 0 4px 14px rgba(0,0,0,0.09);
+      border-color: #93c5fd;
+      transform: translateY(-2px);
+    }
+    .history-card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+    .history-card-row {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .history-card-row span {
+      font-weight: 500;
+      color: #475569;
+    }
+    .history-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 100px 0;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .history-empty-icon { font-size: 48px; }
+  </style>
+</head>
+<body>
+
+  <script src="auth.js"></script>
+  <script>requireLogin();</script>
+
+  <header class="navbar">
+    <div class="navbar-brand">
+      <span class="navbar-logo">✈</span>
+      <span class="navbar-title">Navora</span>
+      <span class="navbar-sub">AI Travel Planner</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="btn btn-outline btn-sm" style="color:#93c5fd;border-color:#93c5fd;" onclick="window.location.href='index.html'">+ New Trip</button>
+      <button class="btn btn-outline btn-sm" style="color:#93c5fd;border-color:#93c5fd;" onclick="logoutUser()">Logout</button>
+    </div>
+  </header>
+
+  <div class="history-content">
+    <p class="history-page-title">Your Trips</p>
+    <div id="historyList" class="history-grid"></div>
+  </div>
+
+  <script src="history.js"></script>
+</body>
+</html>

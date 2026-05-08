@@ -1,5 +1,3 @@
-const API_BASE = "http://127.0.0.1:8000";
-
 function showOutput(data) {
   document.getElementById("output").textContent = JSON.stringify(data, null, 2);
 }
@@ -13,6 +11,14 @@ function clearLoading() {
 }
 
 async function createTrip() {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("Please log in first.");
+    window.location.href = "login.html";
+    return;
+  }
+
   const tripData = {
     title: document.getElementById("title").value,
     destination_city: document.getElementById("destination_city").value,
@@ -26,19 +32,41 @@ async function createTrip() {
     need_flight: document.getElementById("need_flight").checked
   };
 
-  const res = await fetch(`${API_BASE}/api/trips/create`, {
+  const createRes = await fetch(`${API_BASE}/api/trips/create`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
     },
     body: JSON.stringify(tripData)
   });
 
-  const data = await res.json();
-  showOutput(data);
+  const createData = await createRes.json();
 
-  if (data.trip_id) {
-    document.getElementById("trip_id").value = data.trip_id;
+  if (!createRes.ok || !createData.trip_id) {
+    alert(createData.detail || "Failed to create trip.");
+    return;
+  }
+
+  const tripId = createData.trip_id;
+  document.getElementById("trip_id").value = tripId;
+
+  showLoader();
+  setLoading("Generating AI itinerary...");
+
+  try {
+    const genRes = await fetch(`${API_BASE}/api/trips/${tripId}/generate-ai-itinerary`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    const genData = await genRes.json();
+    showOutput(genData);
+
+    await getTripDetail();
+  } finally {
+    clearLoader();
+    clearLoading();
   }
 }
 
