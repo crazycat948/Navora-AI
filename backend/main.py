@@ -875,6 +875,10 @@ def delete_itinerary_item(item_id: int):
         db.close()
         return {"error": "Itinerary item not found"}
 
+    if existing_item["locked"]:
+        db.close()
+        raise HTTPException(status_code=403, detail="This item is locked and cannot be deleted")
+
     db.execute(text("""
         DELETE FROM itinerary_items
         WHERE id = :item_id;

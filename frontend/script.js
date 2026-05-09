@@ -196,9 +196,11 @@ function cardHTML(item, weatherEmoji = "") {
     </div>
     <div class="card-actions">
       <button class="btn btn-success btn-sm" onclick="updateItem(${item.id})">Save</button>
-      <button class="btn btn-outline btn-sm" onclick="replaceItem(${item.id})">Replace</button>
-      <button class="btn btn-warning btn-sm" onclick="lockItem(${item.id})">Lock</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">Delete</button>
+      ${item.locked ? "" : `<button class="btn btn-outline btn-sm" onclick="replaceItem(${item.id})">Replace</button>`}
+      ${item.locked
+        ? `<button class="btn btn-warning btn-sm" onclick="unlockItem(${item.id})">Unlock</button>`
+        : `<button class="btn btn-warning btn-sm" onclick="lockItem(${item.id})">Lock</button>`}
+      ${item.locked ? "" : `<button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">Delete</button>`}
     </div>
   `;
 }
@@ -362,12 +364,26 @@ async function lockItem(itemId) {
   try {
     const res = await fetch(`${API_BASE}/api/itinerary-items/${itemId}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        locked: true
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locked: true })
+    });
+
+    const data = await res.json();
+    showOutput(data);
+    updateSingleCard(data.item);
+  } finally {
+    clearLoading();
+  }
+}
+
+async function unlockItem(itemId) {
+  setLoading(`Unlocking item ${itemId}...`);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/itinerary-items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locked: false })
     });
 
     const data = await res.json();

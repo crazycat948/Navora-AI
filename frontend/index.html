@@ -126,8 +126,29 @@
   <script src="autocomplete.js"></script>
   <script>
     const today = new Date().toISOString().split("T")[0];
-    document.getElementById("arrival_date").min = today;
-    document.getElementById("departure_date").min = today;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+    const arrivalInput = document.getElementById("arrival_date");
+    const departureInput = document.getElementById("departure_date");
+
+    arrivalInput.min = today;
+    arrivalInput.value = today;
+    departureInput.value = tomorrowStr;
+
+    function updateDepartureMin() {
+      const arrivalDate = new Date(arrivalInput.value);
+      arrivalDate.setDate(arrivalDate.getDate() + 1);
+      const minDeparture = arrivalDate.toISOString().split("T")[0];
+      departureInput.min = minDeparture;
+      if (departureInput.value <= arrivalInput.value) {
+        departureInput.value = minDeparture;
+      }
+    }
+
+    updateDepartureMin();
+    arrivalInput.addEventListener("change", updateDepartureMin);
   </script>
 </body>
 </html>
