@@ -19,10 +19,18 @@ async function createTrip() {
     return;
   }
 
+  const departureCity = document.getElementById("departure_city").value.trim();
+  const destinationCity = document.getElementById("destination_city").value.trim();
+
+  if (departureCity.toLowerCase() === destinationCity.toLowerCase()) {
+    alert("Departure city and destination city must be different.");
+    return;
+  }
+
   const tripData = {
     title: document.getElementById("title").value,
-    destination_city: document.getElementById("destination_city").value,
-    departure_city: document.getElementById("departure_city").value,
+    destination_city: destinationCity,
+    departure_city: departureCity,
     arrival_date: document.getElementById("arrival_date").value,
     departure_date: document.getElementById("departure_date").value,
     traveler_type: document.getElementById("traveler_type").value,
@@ -182,8 +190,8 @@ function cardHTML(item, weatherEmoji = "") {
     <p class="card-address">📍 ${item.address}</p>
     <p class="card-notes">${item.notes}</p>
     <div class="card-edit">
-      <input class="card-input" id="start_${item.id}" placeholder="Start" value="${item.start_time.slice(0,5)}">
-      <input class="card-input" id="end_${item.id}" placeholder="End" value="${item.end_time.slice(0,5)}">
+      <input class="card-input" id="start_${item.id}" type="time" value="${item.start_time.slice(0,5)}">
+      <input class="card-input" id="end_${item.id}" type="time" value="${item.end_time.slice(0,5)}">
       <input class="card-input" id="notes_${item.id}" placeholder="Notes" value="${item.notes}">
     </div>
     <div class="card-actions">

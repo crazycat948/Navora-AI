@@ -57,10 +57,15 @@ STRICT PLANNING RULES:
 - If weather is sunny, outdoor attractions are preferred.
 - If weather is rainy, indoor attractions and restaurants are preferred.
 - Keep the schedule realistic.
-- Do not overload each day.
-- A normal day should have 2 to 4 itinerary items.
+- Restaurants: always include exactly 2 restaurant items per day (1 lunch + 1 dinner), regardless of traveler type.
+- Attractions per day are determined by traveler type:
+  - "speedrunning": 4 attractions per day — 2 in the morning, 2 in the afternoon
+  - "normal": 2 attractions per day — 1 in the morning, 1 in the afternoon
+  - "chill": 1 attraction per day — scheduled in the afternoon only
 - Lunch should usually be around 12:00-14:00.
 - Dinner should usually be around 17:30-20:00.
+- Morning attractions should be scheduled before lunch (before 12:00).
+- Afternoon attractions should be scheduled after lunch and before dinner (14:00-17:00).
 
 IMPORTANT:
 If there are not enough unique agent-provided places for every day, create fewer items instead of inventing new places.

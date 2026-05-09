@@ -26,9 +26,20 @@ async function loginUser() {
 }
 
 async function registerUser() {
-  const username = document.getElementById("username").value;
-  const email = document.getElementById("email").value;
+  const username = document.getElementById("username").value.trim();
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
+
+  if (!username || !email || !password) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    alert("Please enter a valid email address.");
+    return;
+  }
 
   const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",

@@ -124,5 +124,10 @@
 
   <script src="script.js"></script>
   <script src="autocomplete.js"></script>
+  <script>
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("arrival_date").min = today;
+    document.getElementById("departure_date").min = today;
+  </script>
 </body>
 </html>

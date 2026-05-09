@@ -1,5 +1,7 @@
-# 5/8/2026
-
-- Register page lacks email format validation — any string is accepted as a valid username
-- Card edit inputs for start/end time have no format constraint — any number can be entered, invalid times are not rejected
+- Register page lacks email format validation — any string is accepted as a valid username （solved）
+- Card edit inputs for start/end time have no format constraint — any number can be entered, invalid times are not rejected (solved)
 - Card lock is incomplete: locked items can still be deleted, and there is no way to unlock a card once locked
+- Date inputs have no minimum date constraint — users can select past dates, resulting in itineraries being generated for trips that have already occurred (solved)
+- Attraction search radius is too narrow — currently limited to the city center only; should expand to the metro region when the user has a car (e.g. a Dallas trip should include Fort Worth attractions), and stay city-only when the user does not have a car
+- Departure city and destination city are not validated to be different — a user can plan a trip from and to the same city (solved)
+- Traveler type (Speedrunning / Normal / Chill) has no enforced scheduling definition — should map to explicit daily item counts: Speedrunning = 4 items/day (2 morning + 2 afternoon), Normal = 2 items/day (1 morning + 1 afternoon), Chill = 1 item/day (solved)
