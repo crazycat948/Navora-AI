@@ -2,6 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from city_service import get_city_coordinates
 from weather_service import get_weather_forecast
 
 load_dotenv()
@@ -12,13 +13,13 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def get_weather_recommendations(trip):
     destination_city = trip["destination_city"]
 
-    # Temporary hardcoded LA coordinates
-    latitude = 34.0522
-    longitude = -118.2437
+    city_location = get_city_coordinates(destination_city)
+    if not city_location:
+        raise ValueError(f"Could not find coordinates for destination city: {destination_city}")
 
     weather_data = get_weather_forecast(
-        latitude=latitude,
-        longitude=longitude,
+        latitude=city_location["latitude"],
+        longitude=city_location["longitude"],
         days=5
     )
 
@@ -29,6 +30,9 @@ Analyze the weather forecast and provide travel planning recommendations.
 
 Destination city:
 {destination_city}
+
+Resolved city location:
+{json.dumps(city_location, indent=2)}
 
 Weather forecast data:
 {json.dumps(weather_data, indent=2)}

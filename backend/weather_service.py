@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_PLACES_ API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 
 
 def get_weather_forecast(latitude, longitude, days=5):

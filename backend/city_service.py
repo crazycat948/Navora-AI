@@ -7,6 +7,43 @@ load_dotenv()
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 
 
+def get_city_coordinates(query: str):
+    url = "https://places.googleapis.com/v1/places:searchText"
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+        "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location"
+    }
+
+    body = {
+        "textQuery": query,
+        "includedType": "locality",
+        "maxResultCount": 1,
+        "languageCode": "en"
+    }
+
+    response = requests.post(url, headers=headers, json=body)
+    data = response.json()
+
+    places = data.get("places", [])
+    if not places:
+        return None
+
+    place = places[0]
+    location = place.get("location", {})
+
+    if "latitude" not in location or "longitude" not in location:
+        return None
+
+    return {
+        "name": place.get("displayName", {}).get("text", query),
+        "address": place.get("formattedAddress", ""),
+        "latitude": location["latitude"],
+        "longitude": location["longitude"]
+    }
+
+
 def search_cities(query: str):
     url = "https://places.googleapis.com/v1/places:searchText"
 
