@@ -165,3 +165,50 @@ Do NOT include explanation, markdown, or extra text.
     print("REPLACE RAW OUTPUT:", response.output_text)
 
     return json.loads(response.output_text)
+
+
+def add_attraction_json(trip, date, existing_names):
+    existing_list = "\n".join(f"- {name}" for name in existing_names) if existing_names else "None"
+
+    prompt = f"""
+You are an AI travel planner.
+
+The user wants to add an extra attraction to their itinerary for a specific day.
+
+Trip information:
+- Destination City: {trip["destination_city"]}
+- Date: {date}
+- Traveler Type: {trip["traveler_type"]}
+- Budget: {trip["budget"]}
+- Has Car: {trip["has_car"]}
+
+Places already in the itinerary (do NOT repeat any of these):
+{existing_list}
+
+Generate ONE new attraction for this destination. It must be a real, well-known place.
+Pick a time slot that does not conflict with typical meal times (12:00-14:00 for lunch, 17:30-20:00 for dinner).
+
+Return ONLY valid JSON with this structure:
+
+{{
+  "item_type": "attraction",
+  "start_time": "HH:MM",
+  "end_time": "HH:MM",
+  "name": "string",
+  "address": "string",
+  "notes": "string",
+  "source_agent": "Attraction Agent",
+  "source_api": "OpenAI"
+}}
+
+Do NOT include explanation, markdown, or extra text.
+"""
+
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input=prompt
+    )
+
+    print("ADD ATTRACTION RAW OUTPUT:", response.output_text)
+
+    return json.loads(response.output_text)

@@ -5,3 +5,6 @@
 - Attraction search radius is too narrow — currently limited to the city center only; should expand to the metro region when the user has a car (e.g. a Dallas trip should include Fort Worth attractions), and stay city-only when the user does not have a car
 - Departure city and destination city are not validated to be different — a user can plan a trip from and to the same city (solved)
 - Traveler type (Speedrunning / Normal / Chill) has no enforced scheduling definition — should map to explicit daily item counts: Speedrunning = 4 items/day (2 morning + 2 afternoon), Normal = 2 items/day (1 morning + 1 afternoon), Chill = 1 item/day (solved)
+
+[FEATURE] - Add a fixed "Add Attraction" button on each day that lets the user AI-generate and append additional attraction cards freely — can be clicked multiple times, giving users full flexibility to build up or extend their itinerary beyond the initial AI-generated plan
+[FEATURE] - Itinerary cards within each day should be sorted by end time; overlapping time slots (where two items share the same time range) should be blocked — if the user manually edits a card's time to conflict with another, they should be warned and prevented from saving

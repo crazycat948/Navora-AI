@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 from database import SessionLocal, test_connection
-from ai_service import test_openai_connection, generate_itinerary_json, replace_itinerary_item_json
+from ai_service import test_openai_connection, generate_itinerary_json, replace_itinerary_item_json, add_attraction_json
 from places_service import search_places
 from attraction_agent import get_attraction_recommendations
 from food_agent import get_food_recommendations
@@ -858,6 +858,71 @@ def delete_trip(trip_id: int, authorization: str = Header(None)):
     return {
         "message": "Trip deleted successfully",
         "deleted_trip_id": trip_id
+    }
+
+
+@app.post("/api/trips/{trip_id}/days/{day_id}/add-attraction")
+def add_attraction_to_day(trip_id: int, day_id: int):
+    db = SessionLocal()
+
+    trip = db.execute(text("""
+        SELECT * FROM trips WHERE id = :trip_id;
+    """), {"trip_id": trip_id}).mappings().fetchone()
+
+    if not trip:
+        db.close()
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    day = db.execute(text("""
+        SELECT * FROM itinerary_days WHERE id = :day_id AND trip_id = :trip_id;
+    """), {"day_id": day_id, "trip_id": trip_id}).mappings().fetchone()
+
+    if not day:
+        db.close()
+        raise HTTPException(status_code=404, detail="Day not found")
+
+    existing_items = db.execute(text("""
+        SELECT name FROM itinerary_items WHERE day_id = :day_id;
+    """), {"day_id": day_id}).fetchall()
+
+    existing_names = [row[0] for row in existing_items]
+
+    max_order = db.execute(text("""
+        SELECT COALESCE(MAX(order_index), 0) FROM itinerary_items WHERE day_id = :day_id;
+    """), {"day_id": day_id}).scalar()
+
+    new_item = add_attraction_json(dict(trip), str(day["date"]), existing_names)
+
+    inserted = db.execute(text("""
+        INSERT INTO itinerary_items (
+            trip_id, day_id, item_type, start_time, end_time,
+            name, address, notes, source_agent, source_api, order_index
+        )
+        VALUES (
+            :trip_id, :day_id, :item_type, :start_time, :end_time,
+            :name, :address, :notes, :source_agent, :source_api, :order_index
+        )
+        RETURNING *;
+    """), {
+        "trip_id": trip_id,
+        "day_id": day_id,
+        "item_type": new_item["item_type"],
+        "start_time": new_item["start_time"],
+        "end_time": new_item["end_time"],
+        "name": new_item["name"],
+        "address": new_item["address"],
+        "notes": new_item["notes"],
+        "source_agent": new_item["source_agent"],
+        "source_api": new_item["source_api"],
+        "order_index": max_order + 1
+    }).mappings().fetchone()
+
+    db.commit()
+    db.close()
+
+    return {
+        "message": "Attraction added successfully",
+        "item": dict(inserted)
     }
 
 

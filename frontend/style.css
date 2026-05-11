@@ -522,6 +522,21 @@ select.form-input {
   color: #2563eb;
 }
 
+/* ── Add Attraction Button ────────────────────────────────── */
+.add-attraction-btn {
+  margin-top: 4px;
+  width: 100%;
+  border-style: dashed;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+.add-attraction-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
 /* ── Recommendation Sections (Hotels & Flights) ──────────── */
 .rec-section {
   margin-top: 32px;

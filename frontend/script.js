@@ -234,13 +234,23 @@ function renderTripDetail(data, weatherMap = {}) {
       </div>
     `;
 
-    day.items.forEach(item => {
+    const sortedItems = [...day.items].sort((a, b) =>
+      a.start_time.localeCompare(b.start_time)
+    );
+
+    sortedItems.forEach(item => {
       const card = document.createElement("div");
       card.id = `card_${item.id}`;
       card.className = `item-card${item.locked ? " locked" : ""}`;
       card.innerHTML = cardHTML(item, weatherEmoji);
       dayDiv.appendChild(card);
     });
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn btn-outline btn-sm add-attraction-btn";
+    addBtn.textContent = "+ Add Attraction";
+    addBtn.onclick = () => addAttractionToDay(day.id, data.trip.id, dayDiv, weatherEmoji);
+    dayDiv.appendChild(addBtn);
 
     container.appendChild(dayDiv);
   });
@@ -288,11 +298,36 @@ function renderTripDetail(data, weatherMap = {}) {
 }
 
 async function updateItem(itemId) {
+  const newStart = document.getElementById(`start_${itemId}`).value;
+  const newEnd = document.getElementById(`end_${itemId}`).value;
+
+  if (newStart >= newEnd) {
+    alert("End time must be after start time.");
+    return;
+  }
+
+  const card = document.getElementById(`card_${itemId}`);
+  const dayBlock = card.closest(".day-block");
+  const otherCards = dayBlock.querySelectorAll(".item-card");
+
+  for (const other of otherCards) {
+    const otherId = other.id.replace("card_", "");
+    if (parseInt(otherId) === itemId) continue;
+    const otherStart = document.getElementById(`start_${otherId}`)?.value;
+    const otherEnd = document.getElementById(`end_${otherId}`)?.value;
+    if (!otherStart || !otherEnd) continue;
+    if (newStart < otherEnd && otherStart < newEnd) {
+      const otherName = other.querySelector(".card-name")?.textContent || `item ${otherId}`;
+      alert(`Time conflict with "${otherName}" (${otherStart}–${otherEnd}). Please adjust the time.`);
+      return;
+    }
+  }
+
   setLoading(`Updating item ${itemId}...`);
 
   const updateData = {
-    start_time: document.getElementById(`start_${itemId}`).value,
-    end_time: document.getElementById(`end_${itemId}`).value,
+    start_time: newStart,
+    end_time: newEnd,
     notes: document.getElementById(`notes_${itemId}`).value
   };
 
@@ -308,6 +343,8 @@ async function updateItem(itemId) {
     const data = await res.json();
     showOutput(data);
     updateSingleCard(data.item);
+    const dayBlock = document.getElementById(`card_${itemId}`)?.closest(".day-block");
+    if (dayBlock) resortDayBlock(dayBlock);
   } finally {
     clearLoading();
   }
@@ -328,6 +365,19 @@ async function replaceItem(itemId) {
   } finally {
     clearLoading();
   }
+}
+
+function resortDayBlock(dayBlock) {
+  const addBtn = dayBlock.querySelector(".add-attraction-btn");
+  const cards = [...dayBlock.querySelectorAll(".item-card")];
+
+  cards.sort((a, b) => {
+    const aStart = document.getElementById(`start_${a.id.replace("card_", "")}`)?.value || "";
+    const bStart = document.getElementById(`start_${b.id.replace("card_", "")}`)?.value || "";
+    return aStart.localeCompare(bStart);
+  });
+
+  cards.forEach(card => dayBlock.insertBefore(card, addBtn));
 }
 
 function updateSingleCard(updatedItem) {
@@ -389,6 +439,30 @@ async function unlockItem(itemId) {
     const data = await res.json();
     showOutput(data);
     updateSingleCard(data.item);
+  } finally {
+    clearLoading();
+  }
+}
+
+async function addAttractionToDay(dayId, tripId, dayDiv, weatherEmoji) {
+  setLoading("Generating new attraction...");
+
+  try {
+    const res = await fetch(`${API_BASE}/api/trips/${tripId}/days/${dayId}/add-attraction`, {
+      method: "POST"
+    });
+
+    const data = await res.json();
+    showOutput(data);
+
+    const item = data.item;
+    const card = document.createElement("div");
+    card.id = `card_${item.id}`;
+    card.className = "item-card";
+    card.innerHTML = cardHTML(item, weatherEmoji);
+
+    const addBtn = dayDiv.querySelector(".add-attraction-btn");
+    dayDiv.insertBefore(card, addBtn);
   } finally {
     clearLoading();
   }
