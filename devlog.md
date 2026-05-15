@@ -217,3 +217,17 @@ Hotel and flight recommendation module shipped. Backend feature-complete.
 - All originally scoped modules are now implemented
 - Remaining work: UI/UX polish and final detail pass before demo
 
+
+# 5/15/2026
+
+Planning another major feature for the project today. The next development focus is an AI chatbox embedded in the trip detail view, with trip-editing skills that can understand user requests, confirm changes, and execute itinerary updates through the existing API.
+
+**Planned Feature**
+- Add a persistent conversational assistant for editing and refining trips
+- Support skills such as editing, replacing, adding, deleting, rescheduling, and optimizing itinerary items
+- Make the assistant schedule-aware so it can detect overlapping time slots, explain conflicts, find free windows, and prevent invalid saves
+- Keep user confirmation required before any modification is applied
+
+**Reference**
+- Full proposal and skill list are documented in `issues.md`
+
