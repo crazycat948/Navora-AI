@@ -6,11 +6,12 @@ from openai import OpenAI
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 def test_openai_connection():
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model=OPENAI_MODEL,
         input="Say: OpenAI connected successfully."
     )
     return response.output_text
@@ -102,7 +103,7 @@ Do NOT include explanations.
 """
 
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model=OPENAI_MODEL,
         input=prompt
     )
 
@@ -158,7 +159,7 @@ Do NOT include explanation, markdown, or extra text.
 """
 
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model=OPENAI_MODEL,
         input=prompt
     )
 
@@ -205,7 +206,7 @@ Do NOT include explanation, markdown, or extra text.
 """
 
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model=OPENAI_MODEL,
         input=prompt
     )
 

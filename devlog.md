@@ -231,3 +231,34 @@ Planning another major feature for the project today. The next development focus
 **Reference**
 - Full proposal and skill list are documented in `issues.md`
 
+**Embedded Trip Chatbox MVP**
+- Added a fixed robot emoji button on trip detail pages as the entry point for the assistant
+- Built a fixed-position chat panel with local message rendering, input handling, Enter-to-send, loading state, and assistant replies
+- Connected the chatbox to a new authenticated backend chat endpoint: `POST /api/trips/{trip_id}/chat`
+- Chat context is automatically bound to the currently viewed trip ID, and the backend verifies that the trip belongs to the logged-in user before loading itinerary data
+- The assistant can now read the current trip, days, and itinerary items and answer plan-specific questions
+
+**Trip Editing Skills**
+- Implemented the first executable chat skill: edit item time
+- The assistant proposes a time change, the frontend shows Confirm/Cancel controls, and the backend only applies the update after confirmation
+- Added backend validation for ownership, locked items, time format, start/end ordering, and same-day time conflicts
+- Confirmed time edits now update the affected card immediately in the frontend and then refresh the plan in the background
+- Implemented delete item skill through chat, including support for deleting one or multiple attractions/restaurants after confirmation
+- Delete actions validate ownership and locked status before removing items, then immediately remove the cards from the page
+
+**Assistant Architecture Refactor**
+- Moved chat assistant logic out of `main.py` and `ai_service.py` into a dedicated `backend/trip_assistant/` package
+- Added `trip_assistant/schemas.py` for chat request/action models
+- Added `trip_assistant/prompts.py` for the structured assistant prompt
+- Added `trip_assistant/service.py` for loading trip context, calling the LLM, parsing actions, and routing execution
+- Added skill modules under `trip_assistant/skills/`: `edit_item_time.py` and `delete_items.py`
+- `main.py` now keeps only thin route handlers for chat and chat action execution
+
+**Scheduling Fix**
+- Removed LLM-side conflict guessing for time edits
+- Conflict detection is now deterministic in backend service code and checks only the target item's actual day/date
+- If a proposed time overlaps with another item on the same day, the assistant returns a conflict explanation and does not show a Confirm action
+
+**Model Configuration**
+- Centralized OpenAI model selection behind the `OPENAI_MODEL` environment variable while preserving `gpt-4o-mini` as the default
+

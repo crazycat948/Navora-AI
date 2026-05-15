@@ -14,6 +14,8 @@ from orchestrator_agent import run_orchestrator
 from city_service import search_cities
 from travel_recommendation_service import generate_hotel_flight_recommendations
 from auth_service import hash_password, verify_password, create_access_token, decode_access_token
+from trip_assistant.schemas import TripChatActionExecute, TripChatRequest
+from trip_assistant.service import execute_chat_action, run_trip_chat
 
 app = FastAPI()
 
@@ -399,6 +401,36 @@ def get_trip_detail(trip_id: int):
         "hotels": [dict(hotel) for hotel in hotels],
         "flights": [dict(flight) for flight in flights]
     }
+
+
+@app.post("/api/trips/{trip_id}/chat")
+def chat_with_trip(
+    trip_id: int,
+    chat: TripChatRequest,
+    authorization: str = Header(None)
+):
+    user_id = get_current_user_id(authorization)
+    return run_trip_chat(
+        trip_id=trip_id,
+        user_id=user_id,
+        message=chat.message.strip(),
+        history=chat.history or []
+    )
+
+
+@app.post("/api/trips/{trip_id}/chat/execute")
+def execute_trip_chat_action(
+    trip_id: int,
+    payload: TripChatActionExecute,
+    authorization: str = Header(None)
+):
+    user_id = get_current_user_id(authorization)
+    return execute_chat_action(
+        trip_id=trip_id,
+        user_id=user_id,
+        action=payload.action
+    )
+
 
 @app.get("/api/trips")
 def get_trip_history(authorization: str = Header(None)):

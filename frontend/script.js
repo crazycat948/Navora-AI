@@ -205,6 +205,233 @@ function cardHTML(item, weatherEmoji = "") {
   `;
 }
 
+function ensureChatbotButton() {
+  if (document.getElementById("chatbotFab")) return;
+
+  const panel = document.createElement("section");
+  panel.id = "chatbotPanel";
+  panel.className = "chatbot-panel";
+  panel.setAttribute("aria-label", "AI trip assistant chat");
+  panel.innerHTML = `
+    <div class="chatbot-panel-header">
+      <div>
+        <div class="chatbot-panel-title">Trip Assistant</div>
+        <div class="chatbot-panel-subtitle">Connected to this trip</div>
+      </div>
+      <button class="chatbot-close-btn" type="button" aria-label="Close AI trip assistant">×</button>
+    </div>
+    <div class="chatbot-messages">
+      <div class="chat-message assistant">
+        Hi, I can help you review this trip and change item times after you confirm.
+      </div>
+    </div>
+    <div class="chatbot-input-row">
+      <input class="chatbot-input" type="text" placeholder="Ask about this trip...">
+      <button class="chatbot-send-btn" type="button">Send</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+
+  const button = document.createElement("button");
+  button.id = "chatbotFab";
+  button.className = "chatbot-fab";
+  button.type = "button";
+  button.title = "AI trip assistant";
+  button.setAttribute("aria-label", "Open AI trip assistant");
+  button.textContent = "🤖";
+  document.body.appendChild(button);
+
+  const closeButton = panel.querySelector(".chatbot-close-btn");
+  const messages = panel.querySelector(".chatbot-messages");
+  const input = panel.querySelector(".chatbot-input");
+  const sendButton = panel.querySelector(".chatbot-send-btn");
+  const chatHistory = [];
+
+  function addChatMessage(role, text) {
+    const message = document.createElement("div");
+    message.className = `chat-message ${role}`;
+    message.textContent = text;
+    messages.appendChild(message);
+    messages.scrollTop = messages.scrollHeight;
+    return message;
+  }
+
+  function formatChatError(data) {
+    if (!data) return "The trip assistant could not complete that action.";
+    if (typeof data.detail === "string") return data.detail;
+    if (data.detail?.message) {
+      const conflicts = data.detail.conflicts || [];
+      const conflictText = conflicts.map(item =>
+        `#${item.id} ${item.name} (${item.start_time}-${item.end_time})`
+      ).join(", ");
+      const lockedItems = data.detail.items || [];
+      const lockedText = lockedItems.map(item => `#${item.id} ${item.name}`).join(", ");
+      if (conflictText) return `${data.detail.message}: ${conflictText}`;
+      if (lockedText) return `${data.detail.message}: ${lockedText}`;
+      return data.detail.message;
+    }
+    return "The trip assistant could not complete that action.";
+  }
+
+  function addChatActionControls(messageElement, action) {
+    const controls = document.createElement("div");
+    controls.className = "chat-action-controls";
+
+    const confirmButton = document.createElement("button");
+    confirmButton.className = "chat-action-btn confirm";
+    confirmButton.type = "button";
+    confirmButton.textContent = "Confirm";
+
+    const cancelButton = document.createElement("button");
+    cancelButton.className = "chat-action-btn cancel";
+    cancelButton.type = "button";
+    cancelButton.textContent = "Cancel";
+
+    controls.appendChild(confirmButton);
+    controls.appendChild(cancelButton);
+    messageElement.appendChild(controls);
+
+    confirmButton.addEventListener("click", async () => {
+      confirmButton.disabled = true;
+      cancelButton.disabled = true;
+      confirmButton.textContent = "Saving";
+
+      const tripId = document.getElementById("trip_id")?.value;
+      const token = localStorage.getItem("token");
+
+      try {
+        const res = await fetch(`${API_BASE}/api/trips/${tripId}/chat/execute`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ action })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          addChatMessage("assistant", formatChatError(data));
+          controls.remove();
+          return;
+        }
+
+        showOutput(data);
+
+        if (data.item) {
+          updateSingleCard(data.item);
+          const updatedCard = document.getElementById(`card_${data.item.id}`);
+          const dayBlock = updatedCard?.closest(".day-block");
+          if (dayBlock) {
+            resortDayBlock(dayBlock);
+          }
+        }
+
+        if (data.deleted_item_ids) {
+          data.deleted_item_ids.forEach(itemId => {
+            const card = document.getElementById(`card_${itemId}`);
+            if (card) card.remove();
+          });
+        }
+
+        addChatMessage("assistant", data.message || "Done. I updated the plan.");
+        controls.remove();
+        getTripDetail().catch(() => {});
+      } catch (error) {
+        addChatMessage("assistant", "The trip assistant could not connect to the server.");
+        controls.remove();
+      }
+    });
+
+    cancelButton.addEventListener("click", () => {
+      controls.remove();
+      addChatMessage("assistant", "No problem. I did not change the trip.");
+    });
+  }
+
+  async function sendLocalChatMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    const tripId = document.getElementById("trip_id")?.value;
+    const token = localStorage.getItem("token");
+
+    if (!tripId) {
+      addChatMessage("assistant", "I need an active trip before I can answer trip-specific questions.");
+      return;
+    }
+
+    if (!token) {
+      addChatMessage("assistant", "Please log in again before using the trip assistant.");
+      return;
+    }
+
+    addChatMessage("user", text);
+    input.value = "";
+    input.disabled = true;
+    sendButton.disabled = true;
+    sendButton.textContent = "Sending";
+
+    const pendingMessage = document.createElement("div");
+    pendingMessage.className = "chat-message assistant";
+    pendingMessage.textContent = "Thinking...";
+    messages.appendChild(pendingMessage);
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/trips/${tripId}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: text,
+          history: chatHistory
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        pendingMessage.textContent = data.detail || "The trip assistant could not answer right now.";
+        return;
+      }
+
+      pendingMessage.textContent = data.reply;
+      if (data.action) {
+        addChatActionControls(pendingMessage, data.action);
+      }
+      chatHistory.push({ role: "user", content: text });
+      chatHistory.push({ role: "assistant", content: data.reply });
+    } catch (error) {
+      pendingMessage.textContent = "The trip assistant could not connect to the server.";
+    } finally {
+      input.disabled = false;
+      sendButton.disabled = false;
+      sendButton.textContent = "Send";
+      input.focus();
+    }
+  }
+
+  button.addEventListener("click", () => {
+    const isOpen = panel.classList.toggle("open");
+    button.setAttribute("aria-label", isOpen ? "Close AI trip assistant" : "Open AI trip assistant");
+    if (isOpen) input.focus();
+  });
+  closeButton.addEventListener("click", () => {
+    panel.classList.remove("open");
+    button.setAttribute("aria-label", "Open AI trip assistant");
+  });
+  sendButton.addEventListener("click", sendLocalChatMessage);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      sendLocalChatMessage();
+    }
+  });
+}
+
 function renderTripDetail(data, weatherMap = {}) {
   const container = document.getElementById("tripDetail");
   container.innerHTML = "";
@@ -214,9 +441,14 @@ function renderTripDetail(data, weatherMap = {}) {
     return;
   }
 
+  ensureChatbotButton();
+
   const header = document.createElement("div");
   header.className = "trip-header";
-  header.innerHTML = `<h1 class="trip-title">${data.trip.title}</h1>`;
+  header.innerHTML = `
+    <h1 class="trip-title">${data.trip.title}</h1>
+    <span class="trip-id-badge">Trip ID #${data.trip.id}</span>
+  `;
   container.appendChild(header);
 
   data.days.forEach(day => {

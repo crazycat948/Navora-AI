@@ -7,6 +7,7 @@ from places_service import search_places
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 def get_food_recommendations(trip):
@@ -63,7 +64,7 @@ Do NOT include explanations.
 """
 
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model=OPENAI_MODEL,
         input=prompt
     )
 

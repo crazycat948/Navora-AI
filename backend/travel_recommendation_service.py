@@ -6,6 +6,7 @@ from openai import OpenAI
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 def generate_hotel_flight_recommendations(trip):
@@ -61,7 +62,7 @@ Rules:
 """
 
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model=OPENAI_MODEL,
         input=prompt
     )
 
