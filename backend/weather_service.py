@@ -23,3 +23,21 @@ def get_weather_forecast(latitude, longitude, days=5):
     print("GOOGLE WEATHER RAW RESPONSE:", data)
 
     return data
+
+
+def get_hourly_weather_forecast(latitude, longitude, hours=168):
+    url = "https://weather.googleapis.com/v1/forecast/hours:lookup"
+
+    params = {
+        "key": GOOGLE_API_KEY,
+        "location.latitude": latitude,
+        "location.longitude": longitude,
+        "hours": hours
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    print("GOOGLE HOURLY WEATHER RAW RESPONSE:", data)
+
+    return data

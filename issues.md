@@ -30,10 +30,10 @@ Chat modes:
 
 Planned skills:
 - [completed] Edit item — modify the time of a specific card through chat by referencing its ID or description; AI proposes the change, user confirms, backend validates ownership/locked status/time conflicts, then updates the item
-- [pending] Replace item — replace a card with a new AI-generated one based on user preference ("something more budget-friendly", "an outdoor alternative")
-- [pending] Ask about weather — query the weather for a specific day in the trip
-- [pending] Add attraction — generate and append a new card to a specific day
-- [pending] Add user-provided place — let users provide a specific place they already know they want to visit, then validate and insert it into the plan after confirmation
+- [completed] Replace item — replace a card with a new AI-generated one based on user preference ("something more budget-friendly", "an outdoor alternative") after user confirmation
+- [completed] Ask about weather — query weather for a specific trip day through chat; if hourly forecast data is available, summarize morning/midday/afternoon/evening conditions, and say when data is unavailable
+- [completed] Add attraction — generate and append a new attraction card to a specific day through chat after user confirmation
+- [completed] Add user-provided place — let users provide a specific place they already know they want to visit, then validate it with Google Places and insert it into the plan after confirmation
 - [completed] Delete item — remove one or multiple attraction/restaurant cards through chat after user confirmation; backend validates ownership and locked status before deleting
 - [pending] Detect schedule conflict — check whether a proposed time change overlaps with existing cards on the same day before saving
 - [pending] Resolve schedule conflict — suggest alternative time slots or move conflicting items after user confirmation

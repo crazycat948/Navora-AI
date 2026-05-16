@@ -6,9 +6,13 @@ from openai import OpenAI
 from sqlalchemy import text
 
 from database import SessionLocal
-from .prompts import build_trip_chat_prompt
+from .prompts import build_trip_action_prompt, build_trip_chat_prompt
+from .skills.add_attraction import execute_add_attraction
+from .skills.add_user_place import execute_add_user_place
+from .skills.ask_weather import execute_ask_weather
 from .skills.delete_items import execute_delete_items
 from .skills.edit_item_time import execute_edit_item_time
+from .skills.replace_item import execute_replace_item
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -69,7 +73,15 @@ def parse_chat_response(raw_text):
             raw_text = raw_text[4:].strip()
 
     try:
-        return json.loads(raw_text)
+        parsed = json.loads(raw_text)
+        if not isinstance(parsed, dict):
+            return {
+                "reply": raw_text,
+                "action": None
+            }
+        parsed.setdefault("reply", "")
+        parsed.setdefault("action", None)
+        return parsed
     except json.JSONDecodeError:
         return {
             "reply": raw_text,
@@ -90,6 +102,83 @@ def generate_trip_chat_reply(trip_context, message, history=None):
     )
 
     return parse_chat_response(response.output_text)
+
+
+def looks_like_action_request(message):
+    message_lower = message.lower()
+    action_words = [
+        "replace", "swap", "change", "remove", "delete", "move",
+        "reschedule", "set", "start", "end", "add", "append", "insert",
+        "visit", "go to", "include", "weather", "rain", "sunny", "cloudy",
+        "temperature", "forecast"
+    ]
+    return any(word in message_lower for word in action_words)
+
+
+def extract_trip_action(trip_context, message):
+    prompt = build_trip_action_prompt(
+        trip_context=trip_context,
+        message=message
+    )
+
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        input=prompt
+    )
+
+    return parse_chat_response(response.output_text).get("action")
+
+
+def build_confirmation_reply(action):
+    action_type = action.get("type")
+
+    if action_type == "replace_item":
+        preference = action.get("preference") or "a new alternative"
+        return f"I can replace item #{action.get('item_id')} with {preference}. Please confirm before I make the change."
+
+    if action_type == "add_attraction":
+        preference = action.get("preference") or "a new attraction"
+        return f"I can add {preference} to Day {action.get('day_number')}. Please confirm before I make the change."
+
+    if action_type == "add_user_place":
+        return (
+            f"I can add {action.get('place_name')} to Day {action.get('day_number')}. "
+            "Please confirm before I make the change."
+        )
+
+    if action_type == "delete_items":
+        item_ids = ", ".join(f"#{item_id}" for item_id in action.get("item_ids", []))
+        return f"I can delete item(s) {item_ids}. Please confirm before I make the change."
+
+    if action_type == "edit_item_time":
+        return (
+            f"I can change item #{action.get('item_id')} to "
+            f"{action.get('start_time')}-{action.get('end_time')}. "
+            "Please confirm before I make the change."
+        )
+
+    return "Please confirm before I make the change."
+
+
+def ensure_action_for_action_request(trip_context, message, chat_result):
+    if chat_result.get("action") or not looks_like_action_request(message):
+        return chat_result
+
+    action = extract_trip_action(trip_context, message)
+
+    if not action:
+        reply = chat_result.get("reply") or "I need a little more detail before I can make that change."
+        reply = reply.replace("Please confirm", "Please specify the exact item")
+        reply = reply.replace("please confirm", "please specify the exact item")
+        return {
+            "reply": reply,
+            "action": None
+        }
+
+    return {
+        "reply": build_confirmation_reply(action),
+        "action": action
+    }
 
 
 def time_to_minutes(value):
@@ -169,6 +258,38 @@ def validate_edit_item_time_action(trip_context, chat_result):
     return chat_result
 
 
+def validate_action_targets(trip_context, chat_result):
+    action = chat_result.get("action")
+
+    if not action or action.get("type") not in ["replace_item", "add_attraction", "add_user_place", "ask_weather"]:
+        return chat_result
+
+    if action.get("type") in ["add_attraction", "add_user_place", "ask_weather"]:
+        day_number = action.get("day_number")
+        target_date = action.get("date")
+        for day in trip_context["days"]:
+            if day_number and day["day_number"] == day_number:
+                return chat_result
+            if target_date and day["date"] == target_date:
+                return chat_result
+
+        return {
+            "reply": "I could not find that day in this trip. Please choose a visible day number.",
+            "action": None
+        }
+
+    item_id = action.get("item_id")
+    for day in trip_context["days"]:
+        for item in day["items"]:
+            if item["id"] == item_id:
+                return chat_result
+
+    return {
+        "reply": "I could not find that item in this trip. Please reference a visible item name or ID.",
+        "action": None
+    }
+
+
 def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
     if not message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
@@ -184,7 +305,13 @@ def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
         message=message.strip(),
         history=history or []
     )
+    chat_result = ensure_action_for_action_request(trip_context, message.strip(), chat_result)
     chat_result = validate_edit_item_time_action(trip_context, chat_result)
+    chat_result = validate_action_targets(trip_context, chat_result)
+
+    action = chat_result.get("action") or {}
+    if action.get("type") == "ask_weather":
+        return execute_ask_weather(trip_context, action)
 
     return {
         "reply": chat_result.get("reply", ""),
@@ -197,7 +324,7 @@ def execute_chat_action(trip_id: int, user_id: int, action: dict):
     action = action or {}
     action_type = action.get("type")
 
-    if action_type not in ["edit_item_time", "delete_items"]:
+    if action_type not in ["edit_item_time", "delete_items", "replace_item", "add_attraction", "add_user_place"]:
         raise HTTPException(status_code=400, detail="Unsupported chat action")
 
     db = SessionLocal()
@@ -217,8 +344,14 @@ def execute_chat_action(trip_id: int, user_id: int, action: dict):
 
         if action_type == "edit_item_time":
             result = execute_edit_item_time(db, trip_id, action)
-        else:
+        elif action_type == "delete_items":
             result = execute_delete_items(db, trip_id, action)
+        elif action_type == "replace_item":
+            result = execute_replace_item(db, trip_id, action)
+        elif action_type == "add_attraction":
+            result = execute_add_attraction(db, trip_id, action)
+        else:
+            result = execute_add_user_place(db, trip_id, action)
 
         db.commit()
         return result

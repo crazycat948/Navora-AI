@@ -262,3 +262,40 @@ Planning another major feature for the project today. The next development focus
 **Model Configuration**
 - Centralized OpenAI model selection behind the `OPENAI_MODEL` environment variable while preserving `gpt-4o-mini` as the default
 
+
+# 5/16/2026
+
+Continued building out the AI Trip Assistant skill system. The chatbox now supports several more concrete trip-editing and trip-question workflows beyond the initial edit/delete MVP.
+
+**New Chat Skills**
+- Implemented `replace_item` skill: users can ask the assistant to replace an itinerary card with a new AI-generated alternative based on preferences like "cheaper restaurant", "something outdoors", or "family friendly"
+- Implemented `add_attraction` skill: users can ask the assistant to generate and add a new attraction/activity to a specific trip day after confirmation
+- Implemented `add_user_place` skill: users can provide a specific known place they already want to visit, and the assistant validates it with Google Places before inserting it into the plan
+- Implemented `ask_weather` skill: users can ask about weather for a specific trip day/date; the assistant queries weather data and summarizes the day by time period when hourly data is available
+
+**Assistant Skill Architecture**
+- Added new skill modules under `backend/trip_assistant/skills/`: `replace_item.py`, `add_attraction.py`, `add_user_place.py`, and `ask_weather.py`
+- Extended `trip_assistant/prompts.py` with structured action types for `replace_item`, `add_attraction`, `add_user_place`, and `ask_weather`
+- Extended `trip_assistant/service.py` to route new actions to their corresponding skill handlers
+- Added a fallback action-extraction pass so the assistant does not ask the user to confirm without returning an executable action payload
+- Read-only skills such as weather return a direct answer and do not show Confirm/Cancel controls
+
+**Weather Support**
+- Added hourly weather forecast lookup in `weather_service.py`
+- Weather skill now attempts to use hourly data for morning/midday/afternoon/evening summaries
+- If forecast data is unavailable for the requested date, the assistant is expected to say so instead of inventing conditions
+
+**Frontend Updates**
+- Chat Confirm flow now handles newly inserted items as well as updated/deleted cards
+- Added day-level DOM metadata so chat-created cards can be inserted into the correct day immediately
+- New cards are inserted and sorted without requiring a full manual page refresh
+
+**Reliability Fixes**
+- Fixed a crash caused by `action: null` responses when checking for read-only weather actions
+- Strengthened chat response parsing so malformed or non-dict LLM output still resolves to a stable `{ reply, action }` shape
+- Adjusted replacement prompts so broad preferences such as "cheaper restaurant" are treated as sufficient and do not trigger unnecessary clarification questions
+
+**Planning**
+- LangGraph is not introduced yet; current skill routing remains simple enough for the existing service/skills structure
+- Plan to consider LangGraph when moving into multi-step skills such as conflict resolution, moving items across days, weather-aware rescheduling, or full-day optimization
+

@@ -112,8 +112,9 @@ Do NOT include explanations.
     return json.loads(response.output_text)
 
 
-def replace_itinerary_item_json(trip, current_item, existing_names):
+def replace_itinerary_item_json(trip, current_item, existing_names, replacement_preference=None):
     existing_list = "\n".join(f"- {name}" for name in existing_names) if existing_names else "None"
+    preference_text = replacement_preference or "No extra preference provided."
 
     prompt = f"""
 You are an AI travel planner.
@@ -135,12 +136,16 @@ Current item to replace:
 - Time: {current_item["start_time"]} to {current_item["end_time"]}
 - Notes: {current_item["notes"]}
 
+User replacement preference:
+{preference_text}
+
 Existing places already in the itinerary:
 {existing_list}
 
 Do NOT recommend any place that appears above. Avoid duplicates.
 
 Generate ONE replacement item with the same item_type and similar time duration.
+Honor the user replacement preference when provided. Broad preferences like "cheaper restaurant", "something outdoors", or "family friendly attraction" are specific enough; do not ask follow-up questions.
 
 Return ONLY valid JSON with this structure:
 
@@ -168,8 +173,9 @@ Do NOT include explanation, markdown, or extra text.
     return json.loads(response.output_text)
 
 
-def add_attraction_json(trip, date, existing_names):
+def add_attraction_json(trip, date, existing_names, attraction_preference=None):
     existing_list = "\n".join(f"- {name}" for name in existing_names) if existing_names else "None"
+    preference_text = attraction_preference or "No extra preference provided."
 
     prompt = f"""
 You are an AI travel planner.
@@ -186,7 +192,11 @@ Trip information:
 Places already in the itinerary (do NOT repeat any of these):
 {existing_list}
 
+User attraction preference:
+{preference_text}
+
 Generate ONE new attraction for this destination. It must be a real, well-known place.
+Honor the user attraction preference when provided. Broad preferences like "coffee shop", "outdoor activity", or "kid friendly place" are specific enough; do not ask follow-up questions.
 Pick a time slot that does not conflict with typical meal times (12:00-14:00 for lunch, 17:30-20:00 for dinner).
 
 Return ONLY valid JSON with this structure:

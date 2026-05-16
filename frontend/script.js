@@ -320,11 +320,27 @@ function ensureChatbotButton() {
         showOutput(data);
 
         if (data.item) {
-          updateSingleCard(data.item);
-          const updatedCard = document.getElementById(`card_${data.item.id}`);
-          const dayBlock = updatedCard?.closest(".day-block");
-          if (dayBlock) {
-            resortDayBlock(dayBlock);
+          let updatedCard = document.getElementById(`card_${data.item.id}`);
+
+          if (updatedCard) {
+            updateSingleCard(data.item);
+            const dayBlock = updatedCard.closest(".day-block");
+            if (dayBlock) {
+              resortDayBlock(dayBlock);
+            }
+          } else if (data.day_number) {
+            const dayBlock = document.querySelector(`.day-block[data-day-number="${data.day_number}"]`);
+            if (dayBlock) {
+              const card = document.createElement("div");
+              card.id = `card_${data.item.id}`;
+              card.className = `item-card${data.item.locked ? " locked" : ""}`;
+              const weatherEmoji = dayBlock.dataset.weatherEmoji || "";
+              card.innerHTML = cardHTML(data.item, weatherEmoji);
+
+              const addBtn = dayBlock.querySelector(".add-attraction-btn");
+              dayBlock.insertBefore(card, addBtn);
+              resortDayBlock(dayBlock);
+            }
           }
         }
 
@@ -454,9 +470,11 @@ function renderTripDetail(data, weatherMap = {}) {
   data.days.forEach(day => {
     const dayDiv = document.createElement("div");
     dayDiv.className = "day-block";
+    dayDiv.dataset.dayNumber = day.day_number;
 
     const weatherType = weatherMap[day.date] || "";
     const weatherEmoji = WEATHER_EMOJI[weatherType] || "";
+    dayDiv.dataset.weatherEmoji = weatherEmoji;
 
     dayDiv.innerHTML = `
       <div class="day-header">
