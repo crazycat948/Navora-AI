@@ -144,7 +144,8 @@ Existing places already in the itinerary:
 
 Do NOT recommend any place that appears above. Avoid duplicates.
 
-Generate ONE replacement item with the same item_type and similar time duration.
+Generate ONE replacement item with the same item_type.
+Keep the exact same start_time and end_time as the current item. Do not reschedule the day.
 Honor the user replacement preference when provided. Broad preferences like "cheaper restaurant", "something outdoors", or "family friendly attraction" are specific enough; do not ask follow-up questions.
 
 Return ONLY valid JSON with this structure:

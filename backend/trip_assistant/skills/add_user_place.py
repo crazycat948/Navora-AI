@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy import text
 
-from places_service import search_places
+from trip_assistant.skills.destination_guard import validate_destination_place
 
 
 def time_to_minutes(value):
@@ -97,13 +97,26 @@ def execute_add_user_place(db, trip_id: int, action: dict):
     if place_name.lower() in existing_names:
         raise HTTPException(status_code=400, detail="This place is already in the selected day")
 
-    places = search_places(place_name, trip["destination_city"]).get("results", [])
+    place = action.get("validated_place")
+    if not place:
+        guard_result = validate_destination_place(
+            place_name=place_name,
+            destination_city=trip["destination_city"],
+            has_car=trip["has_car"]
+        )
 
-    if not places:
-        raise HTTPException(status_code=404, detail="Could not validate this place")
+        if guard_result["status"] == "blocked":
+            raise HTTPException(status_code=400, detail=guard_result["message"])
 
-    place = places[0]
-    start_time, end_time = find_open_slot(item_type, existing_items)
+        place = guard_result["place"]
+
+    if action.get("start_time") and action.get("end_time"):
+        start_time = action["start_time"]
+        end_time = action["end_time"]
+        if overlaps(start_time, end_time, existing_items):
+            raise HTTPException(status_code=409, detail="This requested time conflicts with another item")
+    else:
+        start_time, end_time = find_open_slot(item_type, existing_items)
 
     max_order = db.execute(text("""
         SELECT COALESCE(MAX(order_index), 0)

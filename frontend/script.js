@@ -344,6 +344,19 @@ function ensureChatbotButton() {
           }
         }
 
+        if (data.items) {
+          const touchedDayBlocks = new Set();
+          data.items.forEach(item => {
+            updateSingleCard(item);
+            const card = document.getElementById(`card_${item.id}`);
+            const dayBlock = card?.closest(".day-block");
+            if (dayBlock) {
+              touchedDayBlocks.add(dayBlock);
+            }
+          });
+          touchedDayBlocks.forEach(dayBlock => resortDayBlock(dayBlock));
+        }
+
         if (data.deleted_item_ids) {
           data.deleted_item_ids.forEach(itemId => {
             const card = document.getElementById(`card_${itemId}`);

@@ -7,12 +7,15 @@ from sqlalchemy import text
 
 from database import SessionLocal
 from .prompts import build_trip_action_prompt, build_trip_chat_prompt
+from .graphs.schedule_conflict import run_schedule_conflict_graph
 from .skills.add_attraction import execute_add_attraction
 from .skills.add_user_place import execute_add_user_place
 from .skills.ask_weather import execute_ask_weather
 from .skills.delete_items import execute_delete_items
+from .skills.destination_guard import validate_destination_place
 from .skills.edit_item_time import execute_edit_item_time
 from .skills.replace_item import execute_replace_item
+from .skills.resolve_schedule_conflict import execute_resolve_schedule_conflict
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -290,6 +293,32 @@ def validate_action_targets(trip_context, chat_result):
     }
 
 
+def validate_user_place_destination(trip_context, chat_result):
+    action = chat_result.get("action")
+
+    if not action or action.get("type") != "add_user_place":
+        return chat_result
+
+    place_name = (action.get("place_name") or "").strip()
+
+    destination_city = trip_context["trip"]["destination_city"]
+    guard_result = validate_destination_place(
+        place_name=place_name,
+        destination_city=destination_city,
+        has_car=trip_context["trip"].get("has_car", False)
+    )
+
+    if guard_result["status"] == "blocked":
+        return {
+            "reply": guard_result["message"],
+            "action": None
+        }
+
+    action["validated_place"] = guard_result["place"]
+
+    return chat_result
+
+
 def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
     if not message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
@@ -297,34 +326,57 @@ def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
     db = SessionLocal()
     try:
         trip_context = load_trip_context(db, trip_id, user_id)
+
+        chat_result = generate_trip_chat_reply(
+            trip_context=trip_context,
+            message=message.strip(),
+            history=history or []
+        )
+        chat_result = ensure_action_for_action_request(trip_context, message.strip(), chat_result)
+        chat_result = validate_action_targets(trip_context, chat_result)
+        chat_result = validate_user_place_destination(trip_context, chat_result)
+
+        action = chat_result.get("action") or {}
+        if action.get("type") == "edit_item_time":
+            graph_result = run_schedule_conflict_graph(db, trip_id, action)
+            return {
+                "reply": graph_result.get("reply", ""),
+                "action": graph_result.get("output_action"),
+                "trip_id": trip_id
+            }
+        if action.get("type") == "add_user_place" and action.get("start_time") and action.get("end_time"):
+            graph_result = run_schedule_conflict_graph(db, trip_id, action)
+            return {
+                "reply": graph_result.get("reply", ""),
+                "action": graph_result.get("output_action"),
+                "trip_id": trip_id
+            }
+
+        action = chat_result.get("action") or {}
+        if action.get("type") == "ask_weather":
+            return execute_ask_weather(trip_context, action)
+
+        return {
+            "reply": chat_result.get("reply", ""),
+            "action": chat_result.get("action"),
+            "trip_id": trip_id
+        }
     finally:
         db.close()
-
-    chat_result = generate_trip_chat_reply(
-        trip_context=trip_context,
-        message=message.strip(),
-        history=history or []
-    )
-    chat_result = ensure_action_for_action_request(trip_context, message.strip(), chat_result)
-    chat_result = validate_edit_item_time_action(trip_context, chat_result)
-    chat_result = validate_action_targets(trip_context, chat_result)
-
-    action = chat_result.get("action") or {}
-    if action.get("type") == "ask_weather":
-        return execute_ask_weather(trip_context, action)
-
-    return {
-        "reply": chat_result.get("reply", ""),
-        "action": chat_result.get("action"),
-        "trip_id": trip_id
-    }
 
 
 def execute_chat_action(trip_id: int, user_id: int, action: dict):
     action = action or {}
     action_type = action.get("type")
 
-    if action_type not in ["edit_item_time", "delete_items", "replace_item", "add_attraction", "add_user_place"]:
+    if action_type not in [
+        "edit_item_time",
+        "delete_items",
+        "replace_item",
+        "add_attraction",
+        "add_user_place",
+        "resolve_schedule_conflict"
+    ]:
         raise HTTPException(status_code=400, detail="Unsupported chat action")
 
     db = SessionLocal()
@@ -350,6 +402,8 @@ def execute_chat_action(trip_id: int, user_id: int, action: dict):
             result = execute_replace_item(db, trip_id, action)
         elif action_type == "add_attraction":
             result = execute_add_attraction(db, trip_id, action)
+        elif action_type == "resolve_schedule_conflict":
+            result = execute_resolve_schedule_conflict(db, trip_id, action)
         else:
             result = execute_add_user_place(db, trip_id, action)
 

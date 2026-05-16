@@ -3,6 +3,7 @@
 - Card lock is incomplete: locked items can still be deleted, and there is no way to unlock a card once locked
 - Date inputs have no minimum date constraint — users can select past dates, resulting in itineraries being generated for trips that have already occurred (solved)
 - Attraction search radius is too narrow — currently limited to the city center only; should expand to the metro region when the user has a car (e.g. a Dallas trip should include Fort Worth attractions), and stay city-only when the user does not have a car
+- User-provided place validation bug — if the user tries to add a place outside the trip destination (e.g. Reunion Tower in an LA trip), the app should warn/block it; currently it may fail to block cleanly and can end up generating/adding a random local attraction instead
 - Departure city and destination city are not validated to be different — a user can plan a trip from and to the same city (solved)
 - Traveler type (Speedrunning / Normal / Chill) has no enforced scheduling definition — should map to explicit daily item counts: Speedrunning = 4 items/day (2 morning + 2 afternoon), Normal = 2 items/day (1 morning + 1 afternoon), Chill = 1 item/day (solved)
 
@@ -34,8 +35,9 @@ Planned skills:
 - [completed] Ask about weather — query weather for a specific trip day through chat; if hourly forecast data is available, summarize morning/midday/afternoon/evening conditions, and say when data is unavailable
 - [completed] Add attraction — generate and append a new attraction card to a specific day through chat after user confirmation
 - [completed] Add user-provided place — let users provide a specific place they already know they want to visit, then validate it with Google Places and insert it into the plan after confirmation
+- [completed] Destination guard — validate user-provided places against the trip destination before confirmation; allow known metro-area places such as Santa Monica in LA trips, block clearly out-of-destination places, and prevent fallback/random local attractions
 - [completed] Delete item — remove one or multiple attraction/restaurant cards through chat after user confirmation; backend validates ownership and locked status before deleting
-- [pending] Detect schedule conflict — check whether a proposed time change overlaps with existing cards on the same day before saving
+- [completed] Detect schedule conflict — LangGraph-backed workflow checks whether a proposed time change overlaps with existing cards on the same day before saving; if a conflict exists, it proposes moving the conflicting item while keeping the user's requested time fixed
 - [pending] Resolve schedule conflict — suggest alternative time slots or move conflicting items after user confirmation
 - [pending] Reorder day itinerary — sort cards within a day by end time so the itinerary always displays in schedule order
 - [pending] Optimize day schedule — reorganize a day's items based on time, trip pace, and practical spacing between activities

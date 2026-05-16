@@ -51,7 +51,9 @@ Return ONLY valid JSON with this structure:
     "type": "add_user_place",
     "day_number": 2,
     "place_name": "Universal Studios Hollywood",
-    "item_type": "attraction or restaurant"
+    "item_type": "attraction or restaurant",
+    "start_time": "HH:MM or empty string",
+    "end_time": "HH:MM or empty string"
   }} or {{
     "type": "add_attraction",
     "day_number": 2,
@@ -72,7 +74,8 @@ Action rules:
 - If multiple items match the user's wording and the user did not clearly ask to delete all of them, ask a clarifying question instead of returning an action.
 - For replace_item, put the user's replacement preference in preference, such as "something outdoors", "budget-friendly restaurant", or "family friendly attraction". Use the user's broad preference as-is; "cheaper restaurant" is specific enough. Use an empty string if no preference was given.
 - For add_attraction, use the target day_number from the trip context and put the user's attraction preference in preference, such as "coffee shop", "outdoor activity", or "something kid friendly". Use an empty string if no preference was given.
-- For add_user_place, use the exact place name provided by the user in place_name, infer item_type as restaurant for food/dining places and attraction otherwise.
+- For add_user_place, use the exact place name provided by the user in place_name, infer item_type as restaurant for food/dining places and attraction otherwise. If the user provides a time range, include start_time and end_time exactly in HH:MM format. User-provided time is a hard constraint.
+- Named places must use add_user_place, not add_attraction. For example, "Santa Monica Beach", "Reunion Tower", and "Hollywood Walk of Fame" are named places. Generic requests like "a coffee shop", "a museum", or "something outdoors" use add_attraction.
 - For ask_weather, use either day_number or date from the trip context. This is read-only and does not need user confirmation.
 - For edit_item_time, delete_items, replace_item, add_user_place, and add_attraction, the reply should ask the user to confirm the proposed change without claiming that validation has already passed.
 
@@ -113,7 +116,9 @@ Supported actions:
     "type": "add_user_place",
     "day_number": 2,
     "place_name": "Universal Studios Hollywood",
-    "item_type": "attraction or restaurant"
+    "item_type": "attraction or restaurant",
+    "start_time": "HH:MM or empty string",
+    "end_time": "HH:MM or empty string"
   }} or {{
     "type": "add_attraction",
     "day_number": 2,
@@ -136,7 +141,8 @@ Rules:
 - If the target item is unclear or multiple items match, return {{"action": null}}.
 - Do NOT return null just because the replacement preference is broad. Preferences like "cheaper restaurant", "something outdoors", or "family friendly" are enough.
 - For replace_item, put the user's replacement preference in preference.
-- For add_user_place, put the exact provided place name in place_name and infer item_type.
+- For add_user_place, put the exact provided place name in place_name and infer item_type. If the user provides a time range, include start_time and end_time exactly in HH:MM format.
+- Named places must use add_user_place, not add_attraction. Generic category requests use add_attraction.
 - For add_attraction, use the target day_number from the trip context and put the user's preference in preference.
 - For ask_weather, use either day_number or date from the trip context.
 

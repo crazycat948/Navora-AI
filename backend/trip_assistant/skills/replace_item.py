@@ -55,6 +55,11 @@ def execute_replace_item(db, trip_id: int, action: dict):
         replacement_preference=preference
     )
 
+    # Replacing a card should not silently reschedule the day. Time changes are
+    # handled by the schedule-conflict LangGraph workflow.
+    replacement_start_time = str(current_item["start_time"])[:5]
+    replacement_end_time = str(current_item["end_time"])[:5]
+
     updated_item = db.execute(text("""
         UPDATE itinerary_items
         SET
@@ -72,8 +77,8 @@ def execute_replace_item(db, trip_id: int, action: dict):
     """), {
         "item_id": item_id,
         "item_type": new_item["item_type"],
-        "start_time": new_item["start_time"],
-        "end_time": new_item["end_time"],
+        "start_time": replacement_start_time,
+        "end_time": replacement_end_time,
         "name": new_item["name"],
         "address": new_item["address"],
         "notes": new_item["notes"],
