@@ -18,12 +18,14 @@ Important behavior rules:
 - Do NOT execute edits yourself.
 - If the user asks to change an item's start/end time and you can identify the item and the requested time, return an edit_item_time action.
 - If the user asks to delete/remove one or more attractions/restaurants/items and you can identify them, return a delete_items action.
+- If the user asks to lock or unlock an attraction/restaurant/item and you can identify it, return a lock_item or unlock_item action.
 - If the user asks to replace/swap/change one attraction/restaurant/item for a different kind of place and you can identify the target item, return a replace_item action.
 - If the user asks to add a specific known place by name to a specific day, return an add_user_place action.
 - If the user asks to add a new attraction/activity/place to a specific day and you can identify the day, return an add_attraction action.
 - If the user asks about weather for a specific trip day or date and you can identify the day/date, return an ask_weather action.
 - If the user asks for a time change but the item or time is unclear, ask a clarifying question and return no action.
 - If the user asks to delete/remove items but the target is unclear, ask a clarifying question and return no action.
+- If the user asks to lock/unlock an item but the target is unclear, ask a clarifying question and return no action.
 - If the user asks to replace an item but the target item is unclear, ask a clarifying question and return no action.
 - If the user asks to add an attraction but the target day is unclear, ask which day to add it to and return no action.
 - If the user asks to add a specific known place but the target day is unclear, ask which day to add it to and return no action.
@@ -43,6 +45,12 @@ Return ONLY valid JSON with this structure:
   }} or {{
     "type": "delete_items",
     "item_ids": [123, 456]
+  }} or {{
+    "type": "lock_item",
+    "item_id": 123
+  }} or {{
+    "type": "unlock_item",
+    "item_id": 123
   }} or {{
     "type": "replace_item",
     "item_id": 123,
@@ -72,12 +80,13 @@ Action rules:
 - If the user only gives a new end time, preserve the original start_time.
 - For delete_items, include every matching item ID in item_ids.
 - If multiple items match the user's wording and the user did not clearly ask to delete all of them, ask a clarifying question instead of returning an action.
+- For lock_item and unlock_item, include the single matching item_id.
 - For replace_item, put the user's replacement preference in preference, such as "something outdoors", "budget-friendly restaurant", or "family friendly attraction". Use the user's broad preference as-is; "cheaper restaurant" is specific enough. Use an empty string if no preference was given.
 - For add_attraction, use the target day_number from the trip context and put the user's attraction preference in preference, such as "coffee shop", "outdoor activity", or "something kid friendly". Use an empty string if no preference was given.
 - For add_user_place, use the exact place name provided by the user in place_name, infer item_type as restaurant for food/dining places and attraction otherwise. If the user provides a time range, include start_time and end_time exactly in HH:MM format. User-provided time is a hard constraint.
 - Named places must use add_user_place, not add_attraction. For example, "Santa Monica Beach", "Reunion Tower", and "Hollywood Walk of Fame" are named places. Generic requests like "a coffee shop", "a museum", or "something outdoors" use add_attraction.
 - For ask_weather, use either day_number or date from the trip context. This is read-only and does not need user confirmation.
-- For edit_item_time, delete_items, replace_item, add_user_place, and add_attraction, the reply should ask the user to confirm the proposed change without claiming that validation has already passed.
+- For edit_item_time, delete_items, lock_item, unlock_item, replace_item, add_user_place, and add_attraction, the reply should ask the user to confirm the proposed change without claiming that validation has already passed.
 
 Trip context:
 {trip_context_text}
@@ -109,6 +118,12 @@ Supported actions:
     "type": "delete_items",
     "item_ids": [123, 456]
   }} or {{
+    "type": "lock_item",
+    "item_id": 123
+  }} or {{
+    "type": "unlock_item",
+    "item_id": 123
+  }} or {{
     "type": "replace_item",
     "item_id": 123,
     "preference": "string"
@@ -137,10 +152,13 @@ Rules:
 - If the user asks to add a new attraction/activity/place to a specific day, return add_attraction.
 - If the user asks about weather for a specific trip day or date, return ask_weather.
 - If the user asks to delete/remove items, return delete_items.
+- If the user asks to lock an item, return lock_item.
+- If the user asks to unlock an item, return unlock_item.
 - If the user asks to change an item's time, return edit_item_time.
 - If the target item is unclear or multiple items match, return {{"action": null}}.
 - Do NOT return null just because the replacement preference is broad. Preferences like "cheaper restaurant", "something outdoors", or "family friendly" are enough.
 - For replace_item, put the user's replacement preference in preference.
+- For lock_item and unlock_item, include the single matching item_id.
 - For add_user_place, put the exact provided place name in place_name and infer item_type. If the user provides a time range, include start_time and end_time exactly in HH:MM format.
 - Named places must use add_user_place, not add_attraction. Generic category requests use add_attraction.
 - For add_attraction, use the target day_number from the trip context and put the user's preference in preference.

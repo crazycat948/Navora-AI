@@ -14,6 +14,7 @@ from .skills.ask_weather import execute_ask_weather
 from .skills.delete_items import execute_delete_items
 from .skills.destination_guard import validate_destination_place
 from .skills.edit_item_time import execute_edit_item_time
+from .skills.lock_item import execute_lock_item
 from .skills.replace_item import execute_replace_item
 from .skills.resolve_schedule_conflict import execute_resolve_schedule_conflict
 
@@ -113,7 +114,7 @@ def looks_like_action_request(message):
         "replace", "swap", "change", "remove", "delete", "move",
         "reschedule", "set", "start", "end", "add", "append", "insert",
         "visit", "go to", "include", "weather", "rain", "sunny", "cloudy",
-        "temperature", "forecast"
+        "temperature", "forecast", "lock", "unlock"
     ]
     return any(word in message_lower for word in action_words)
 
@@ -152,6 +153,12 @@ def build_confirmation_reply(action):
     if action_type == "delete_items":
         item_ids = ", ".join(f"#{item_id}" for item_id in action.get("item_ids", []))
         return f"I can delete item(s) {item_ids}. Please confirm before I make the change."
+
+    if action_type == "lock_item":
+        return f"I can lock item #{action.get('item_id')}. Please confirm before I make the change."
+
+    if action_type == "unlock_item":
+        return f"I can unlock item #{action.get('item_id')}. Please confirm before I make the change."
 
     if action_type == "edit_item_time":
         return (
@@ -264,7 +271,14 @@ def validate_edit_item_time_action(trip_context, chat_result):
 def validate_action_targets(trip_context, chat_result):
     action = chat_result.get("action")
 
-    if not action or action.get("type") not in ["replace_item", "add_attraction", "add_user_place", "ask_weather"]:
+    if not action or action.get("type") not in [
+        "replace_item",
+        "lock_item",
+        "unlock_item",
+        "add_attraction",
+        "add_user_place",
+        "ask_weather"
+    ]:
         return chat_result
 
     if action.get("type") in ["add_attraction", "add_user_place", "ask_weather"]:
@@ -372,6 +386,8 @@ def execute_chat_action(trip_id: int, user_id: int, action: dict):
     if action_type not in [
         "edit_item_time",
         "delete_items",
+        "lock_item",
+        "unlock_item",
         "replace_item",
         "add_attraction",
         "add_user_place",
@@ -398,6 +414,10 @@ def execute_chat_action(trip_id: int, user_id: int, action: dict):
             result = execute_edit_item_time(db, trip_id, action)
         elif action_type == "delete_items":
             result = execute_delete_items(db, trip_id, action)
+        elif action_type == "lock_item":
+            result = execute_lock_item(db, trip_id, action, locked=True)
+        elif action_type == "unlock_item":
+            result = execute_lock_item(db, trip_id, action, locked=False)
         elif action_type == "replace_item":
             result = execute_replace_item(db, trip_id, action)
         elif action_type == "add_attraction":
