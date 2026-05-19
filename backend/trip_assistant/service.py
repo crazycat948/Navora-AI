@@ -14,8 +14,11 @@ from .skills.ask_weather import execute_ask_weather
 from .skills.delete_items import execute_delete_items
 from .skills.destination_guard import validate_destination_place
 from .skills.edit_item_time import execute_edit_item_time
+from .skills.explain_conflict import execute_explain_conflict
 from .skills.find_free_time_slot import execute_find_free_time_slot
+from .skills.insert_attraction_available_slot import prepare_insert_attraction_available_slot
 from .skills.lock_item import execute_lock_item
+from .skills.move_item_to_day import execute_move_item_to_day, prepare_move_item_to_day
 from .skills.replace_item import execute_replace_item
 from .skills.resolve_schedule_conflict import execute_resolve_schedule_conflict
 
@@ -116,7 +119,8 @@ def looks_like_action_request(message):
         "reschedule", "set", "start", "end", "add", "append", "insert",
         "visit", "go to", "include", "weather", "rain", "sunny", "cloudy",
         "temperature", "forecast", "lock", "unlock", "free", "available",
-        "availability", "open slot", "free slot", "time slot"
+        "availability", "open slot", "free slot", "time slot", "conflict",
+        "overlap", "why can't", "why cant"
     ]
     return any(word in message_lower for word in action_words)
 
@@ -144,7 +148,10 @@ def build_confirmation_reply(action):
 
     if action_type == "add_attraction":
         preference = action.get("preference") or "a new attraction"
-        return f"I can add {preference} to Day {action.get('day_number')}. Please confirm before I make the change."
+        time_text = ""
+        if action.get("start_time") and action.get("end_time"):
+            time_text = f" at {action.get('start_time')}-{action.get('end_time')}"
+        return f"I can add {preference} to Day {action.get('day_number')}{time_text}. Please confirm before I make the change."
 
     if action_type == "add_user_place":
         return (
@@ -161,6 +168,12 @@ def build_confirmation_reply(action):
 
     if action_type == "unlock_item":
         return f"I can unlock item #{action.get('item_id')}. Please confirm before I make the change."
+
+    if action_type == "move_item_to_day":
+        return (
+            f"I can move item #{action.get('item_id')} to Day {action.get('day_number')}. "
+            "Please confirm before I make the change."
+        )
 
     if action_type == "edit_item_time":
         return (
@@ -275,18 +288,49 @@ def validate_action_targets(trip_context, chat_result):
 
     if not action or action.get("type") not in [
         "replace_item",
+        "move_item_to_day",
         "lock_item",
         "unlock_item",
         "add_attraction",
+        "insert_attraction_available_slot",
         "add_user_place",
         "ask_weather",
-        "find_free_time_slot"
+        "find_free_time_slot",
+        "explain_conflict"
     ]:
         return chat_result
 
-    if action.get("type") in ["add_attraction", "add_user_place", "ask_weather", "find_free_time_slot"]:
+    if action.get("type") in [
+        "add_attraction",
+        "insert_attraction_available_slot",
+        "add_user_place",
+        "ask_weather",
+        "find_free_time_slot",
+        "explain_conflict"
+    ]:
         day_number = action.get("day_number")
         target_date = action.get("date")
+        if action.get("type") == "explain_conflict" and action.get("item_id"):
+            if day_number or target_date:
+                target_day_exists = any(
+                    (day_number and day["day_number"] == day_number) or
+                    (target_date and day["date"] == target_date)
+                    for day in trip_context["days"]
+                )
+                if not target_day_exists:
+                    return {
+                        "reply": "I could not find that day in this trip. Please choose a visible day number.",
+                        "action": None
+                    }
+
+            for day in trip_context["days"]:
+                for item in day["items"]:
+                    if item["id"] == action.get("item_id"):
+                        return chat_result
+            return {
+                "reply": "I could not find that item in this trip. Please reference a visible item name or ID.",
+                "action": None
+            }
         for day in trip_context["days"]:
             if day_number and day["day_number"] == day_number:
                 return chat_result
@@ -352,6 +396,8 @@ def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
         chat_result = ensure_action_for_action_request(trip_context, message.strip(), chat_result)
         chat_result = validate_action_targets(trip_context, chat_result)
         chat_result = validate_user_place_destination(trip_context, chat_result)
+        chat_result = prepare_move_item_to_day(trip_context, chat_result)
+        chat_result = prepare_insert_attraction_available_slot(trip_context, chat_result)
 
         action = chat_result.get("action") or {}
         if action.get("type") == "edit_item_time":
@@ -374,6 +420,8 @@ def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
             return execute_ask_weather(trip_context, action)
         if action.get("type") == "find_free_time_slot":
             return execute_find_free_time_slot(trip_context, action)
+        if action.get("type") == "explain_conflict":
+            return execute_explain_conflict(trip_context, action)
 
         return {
             "reply": chat_result.get("reply", ""),
@@ -393,6 +441,7 @@ def execute_chat_action(trip_id: int, user_id: int, action: dict):
         "delete_items",
         "lock_item",
         "unlock_item",
+        "move_item_to_day",
         "replace_item",
         "add_attraction",
         "add_user_place",
@@ -423,6 +472,8 @@ def execute_chat_action(trip_id: int, user_id: int, action: dict):
             result = execute_lock_item(db, trip_id, action, locked=True)
         elif action_type == "unlock_item":
             result = execute_lock_item(db, trip_id, action, locked=False)
+        elif action_type == "move_item_to_day":
+            result = execute_move_item_to_day(db, trip_id, action)
         elif action_type == "replace_item":
             result = execute_replace_item(db, trip_id, action)
         elif action_type == "add_attraction":

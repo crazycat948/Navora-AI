@@ -323,7 +323,17 @@ function ensureChatbotButton() {
           let updatedCard = document.getElementById(`card_${data.item.id}`);
 
           if (updatedCard) {
+            const targetDayBlock = data.day_number
+              ? document.querySelector(`.day-block[data-day-number="${data.day_number}"]`)
+              : null;
             updateSingleCard(data.item);
+            updatedCard = document.getElementById(`card_${data.item.id}`);
+            const currentDayBlock = updatedCard.closest(".day-block");
+            if (targetDayBlock && targetDayBlock !== currentDayBlock) {
+              const addBtn = targetDayBlock.querySelector(".add-attraction-btn");
+              targetDayBlock.insertBefore(updatedCard, addBtn);
+              resortDayBlock(targetDayBlock);
+            }
             const dayBlock = updatedCard.closest(".day-block");
             if (dayBlock) {
               resortDayBlock(dayBlock);
