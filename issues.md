@@ -42,7 +42,7 @@ Planned skills:
 - [pending] Reorder day itinerary — sort cards within a day by end time so the itinerary always displays in schedule order
 - [pending] Optimize day schedule — reorganize a day's items based on time, trip pace, and practical spacing between activities
 - [pending] Move item to another day — relocate a card to a different day while checking the target day's available time slots
-- [pending] Find free time slot — identify open windows in a day where a new or moved attraction can fit
+- [completed] Find free time slot — identify open windows in a day where a new or moved attraction can fit
 - [pending] Insert attraction into available slot — generate a new attraction and place it into a non-conflicting time window instead of blindly appending it
 - [pending] Shorten or extend item duration — adjust an item's start/end time while validating that the new duration does not conflict with other cards
 - [pending] Explain conflict — tell the user exactly which items overlap and why a proposed save cannot be completed

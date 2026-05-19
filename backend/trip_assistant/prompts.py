@@ -23,6 +23,7 @@ Important behavior rules:
 - If the user asks to add a specific known place by name to a specific day, return an add_user_place action.
 - If the user asks to add a new attraction/activity/place to a specific day and you can identify the day, return an add_attraction action.
 - If the user asks about weather for a specific trip day or date and you can identify the day/date, return an ask_weather action.
+- If the user asks for open/free/available time slots on a specific trip day or date, return a find_free_time_slot action.
 - If the user asks for a time change but the item or time is unclear, ask a clarifying question and return no action.
 - If the user asks to delete/remove items but the target is unclear, ask a clarifying question and return no action.
 - If the user asks to lock/unlock an item but the target is unclear, ask a clarifying question and return no action.
@@ -30,6 +31,7 @@ Important behavior rules:
 - If the user asks to add an attraction but the target day is unclear, ask which day to add it to and return no action.
 - If the user asks to add a specific known place but the target day is unclear, ask which day to add it to and return no action.
 - If the user asks about weather but the target day/date is unclear, ask which day they mean and return no action.
+- If the user asks for free time but the target day/date is unclear, ask which day they mean and return no action.
 - Do NOT ask for a more specific replacement subtype when the user already gave a useful preference such as cheaper, budget-friendly, outdoors, indoor, family-friendly, local, casual, premium, faster, or quieter.
 - Do NOT decide whether a proposed time change conflicts with other items. The backend will validate conflicts by exact day/date after you return the action.
 - If the user asks about a card or day, use the trip data provided here.
@@ -70,6 +72,11 @@ Return ONLY valid JSON with this structure:
     "type": "ask_weather",
     "day_number": 2,
     "date": "YYYY-MM-DD or empty string"
+  }} or {{
+    "type": "find_free_time_slot",
+    "day_number": 2,
+    "date": "YYYY-MM-DD or empty string",
+    "duration_minutes": 60
   }}
 }}
 
@@ -86,6 +93,7 @@ Action rules:
 - For add_user_place, use the exact place name provided by the user in place_name, infer item_type as restaurant for food/dining places and attraction otherwise. If the user provides a time range, include start_time and end_time exactly in HH:MM format. User-provided time is a hard constraint.
 - Named places must use add_user_place, not add_attraction. For example, "Santa Monica Beach", "Reunion Tower", and "Hollywood Walk of Fame" are named places. Generic requests like "a coffee shop", "a museum", or "something outdoors" use add_attraction.
 - For ask_weather, use either day_number or date from the trip context. This is read-only and does not need user confirmation.
+- For find_free_time_slot, use either day_number or date from the trip context. If the user asks for a duration like "2 hours" or "90 minutes", convert it to duration_minutes. Use 60 if no duration is given. This is read-only and does not need user confirmation.
 - For edit_item_time, delete_items, lock_item, unlock_item, replace_item, add_user_place, and add_attraction, the reply should ask the user to confirm the proposed change without claiming that validation has already passed.
 
 Trip context:
@@ -142,6 +150,11 @@ Supported actions:
     "type": "ask_weather",
     "day_number": 2,
     "date": "YYYY-MM-DD or empty string"
+  }} or {{
+    "type": "find_free_time_slot",
+    "day_number": 2,
+    "date": "YYYY-MM-DD or empty string",
+    "duration_minutes": 60
   }}
 }}
 
@@ -151,6 +164,7 @@ Rules:
 - If the user asks to add a specific known place by name to a specific day, return add_user_place.
 - If the user asks to add a new attraction/activity/place to a specific day, return add_attraction.
 - If the user asks about weather for a specific trip day or date, return ask_weather.
+- If the user asks for open/free/available time slots on a specific trip day or date, return find_free_time_slot.
 - If the user asks to delete/remove items, return delete_items.
 - If the user asks to lock an item, return lock_item.
 - If the user asks to unlock an item, return unlock_item.
@@ -163,6 +177,7 @@ Rules:
 - Named places must use add_user_place, not add_attraction. Generic category requests use add_attraction.
 - For add_attraction, use the target day_number from the trip context and put the user's preference in preference.
 - For ask_weather, use either day_number or date from the trip context.
+- For find_free_time_slot, use either day_number or date from the trip context. Convert requested duration to minutes, or use 60 if no duration is given.
 
 Trip context:
 {trip_context_text}

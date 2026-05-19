@@ -14,6 +14,7 @@ from .skills.ask_weather import execute_ask_weather
 from .skills.delete_items import execute_delete_items
 from .skills.destination_guard import validate_destination_place
 from .skills.edit_item_time import execute_edit_item_time
+from .skills.find_free_time_slot import execute_find_free_time_slot
 from .skills.lock_item import execute_lock_item
 from .skills.replace_item import execute_replace_item
 from .skills.resolve_schedule_conflict import execute_resolve_schedule_conflict
@@ -114,7 +115,8 @@ def looks_like_action_request(message):
         "replace", "swap", "change", "remove", "delete", "move",
         "reschedule", "set", "start", "end", "add", "append", "insert",
         "visit", "go to", "include", "weather", "rain", "sunny", "cloudy",
-        "temperature", "forecast", "lock", "unlock"
+        "temperature", "forecast", "lock", "unlock", "free", "available",
+        "availability", "open slot", "free slot", "time slot"
     ]
     return any(word in message_lower for word in action_words)
 
@@ -277,11 +279,12 @@ def validate_action_targets(trip_context, chat_result):
         "unlock_item",
         "add_attraction",
         "add_user_place",
-        "ask_weather"
+        "ask_weather",
+        "find_free_time_slot"
     ]:
         return chat_result
 
-    if action.get("type") in ["add_attraction", "add_user_place", "ask_weather"]:
+    if action.get("type") in ["add_attraction", "add_user_place", "ask_weather", "find_free_time_slot"]:
         day_number = action.get("day_number")
         target_date = action.get("date")
         for day in trip_context["days"]:
@@ -369,6 +372,8 @@ def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
         action = chat_result.get("action") or {}
         if action.get("type") == "ask_weather":
             return execute_ask_weather(trip_context, action)
+        if action.get("type") == "find_free_time_slot":
+            return execute_find_free_time_slot(trip_context, action)
 
         return {
             "reply": chat_result.get("reply", ""),
