@@ -153,3 +153,27 @@ Itinerary Planner (GPT-4o-mini)
 | POST | `/api/trips/{id}/travel-recommendations` | Generate hotel & flight suggestions |
 | GET | `/api/cities/search?q=` | City autocomplete |
 | GET | `/api/trips/{id}/weather` | Fetch weather for trip dates |
+
+---
+
+## New Feature: Chatbox
+
+Navora now includes an embedded AI Trip Assistant chatbox on the trip detail page. The chatbox is connected to the currently opened trip, so users can ask questions about their itinerary and request trip edits in natural language without manually finding every API action.
+
+The chatbox uses a confirmation-first workflow. When a user asks for an itinerary change, the assistant converts the message into a structured action, explains the proposed change, and waits for the user to confirm before updating the database.
+
+Supported chatbox skills include:
+
+- Editing itinerary item times with schedule conflict validation
+- Moving an item to another day and placing it into an available time slot
+- Deleting, locking, unlocking, and replacing itinerary cards
+- Adding AI-generated attractions to a selected day
+- Adding user-provided places after Google Places validation
+- Blocking out-of-destination places with a destination guard
+- Finding free time slots on a specific trip day
+- Inserting a new attraction into an available non-conflicting slot
+- Explaining proposed schedule conflicts before saving
+- Answering weather questions for specific trip days
+- Explaining how to use Navora, itinerary cards, and the chatbox itself
+
+The chatbox combines OpenAI structured action extraction, FastAPI execution endpoints, PostgreSQL-backed itinerary updates, Google Places validation, Open-Meteo weather data, and LangGraph-powered schedule conflict handling.
