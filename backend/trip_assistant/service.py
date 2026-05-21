@@ -10,6 +10,7 @@ from .prompts import build_trip_action_prompt, build_trip_chat_prompt
 from .graphs.schedule_conflict import run_schedule_conflict_graph
 from .skills.add_attraction import execute_add_attraction
 from .skills.add_user_place import execute_add_user_place
+from .skills.app_help import execute_app_help
 from .skills.ask_weather import execute_ask_weather
 from .skills.delete_items import execute_delete_items
 from .skills.destination_guard import validate_destination_place
@@ -120,7 +121,8 @@ def looks_like_action_request(message):
         "visit", "go to", "include", "weather", "rain", "sunny", "cloudy",
         "temperature", "forecast", "lock", "unlock", "free", "available",
         "availability", "open slot", "free slot", "time slot", "conflict",
-        "overlap", "why can't", "why cant"
+        "overlap", "why can't", "why cant", "help", "how to", "how do i",
+        "how can i", "what can you do", "use this", "use navora", "website"
     ]
     return any(word in message_lower for word in action_words)
 
@@ -291,6 +293,7 @@ def validate_action_targets(trip_context, chat_result):
         "move_item_to_day",
         "lock_item",
         "unlock_item",
+        "app_help",
         "add_attraction",
         "insert_attraction_available_slot",
         "add_user_place",
@@ -301,6 +304,7 @@ def validate_action_targets(trip_context, chat_result):
         return chat_result
 
     if action.get("type") in [
+        "app_help",
         "add_attraction",
         "insert_attraction_available_slot",
         "add_user_place",
@@ -310,6 +314,8 @@ def validate_action_targets(trip_context, chat_result):
     ]:
         day_number = action.get("day_number")
         target_date = action.get("date")
+        if action.get("type") == "app_help":
+            return chat_result
         if action.get("type") == "explain_conflict" and action.get("item_id"):
             if day_number or target_date:
                 target_day_exists = any(
@@ -416,6 +422,8 @@ def run_trip_chat(trip_id: int, user_id: int, message: str, history=None):
             }
 
         action = chat_result.get("action") or {}
+        if action.get("type") == "app_help":
+            return execute_app_help(trip_context, action)
         if action.get("type") == "ask_weather":
             return execute_ask_weather(trip_context, action)
         if action.get("type") == "find_free_time_slot":

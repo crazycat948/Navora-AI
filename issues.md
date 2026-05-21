@@ -46,6 +46,7 @@ Planned skills:
 - [completed] Insert attraction into available slot — generate a new attraction and place it into a non-conflicting time window instead of blindly appending it
 - [pending] Shorten or extend item duration — adjust an item's start/end time while validating that the new duration does not conflict with other cards
 - [completed] Explain conflict — tell the user exactly which items overlap and why a proposed save cannot be completed
+- [completed] App help — answer how-to-use questions about Navora AI, trip creation, itinerary cards, the Trip Assistant, weather, and account basics
 - [pending] Budget-aware replacement — replace an item with a cheaper or more premium alternative based on user preference
 - [pending] Weather-aware reschedule — use weather context to suggest moving outdoor/indoor activities across days
 - [pending] Location-aware route optimization — reorder or replace items to reduce unnecessary travel between attractions
