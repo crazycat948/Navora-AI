@@ -3,6 +3,7 @@
 An AI-powered travel planning web app that generates personalized day-by-day itineraries using a multi-agent architecture. Users input their trip details and receive a structured itinerary with real attractions, restaurants, weather-aware scheduling, and optional hotel/flight recommendations.
 
 **Demo Final(maybe): https://youtu.be/P0LSRbDRLUM?si=TwvT4s6xbjSxzEkd
+**Chatbox Demo : https://youtu.be/aXv1xFBY6fQ?si=VKHY8K1dTd23j7de
 
 
 
